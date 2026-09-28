@@ -43,6 +43,20 @@ function OtpFormInner({
     setMsg("Code sent — check your SMS.");
   }
 
+  async function resend() {
+    setBusy(true);
+    setMsg("");
+    const r = await requestOtpAction(phone);
+    setBusy(false);
+    setMsg(
+      r.ok
+        ? "New code sent — previous codes are void."
+        : (r.retryAfterS
+          ? `Code already sent — wait ${r.retryAfterS}s before resending.`
+          : (r.error ?? "Could not send code.")),
+    );
+  }
+
   async function verify(form: FormData) {
     setBusy(true);
     setMsg("");
@@ -106,6 +120,14 @@ function OtpFormInner({
             <Btn tone="primary" type="submit" disabled={busy} className="py-2 text-sm">
               {busy ? "Verifying…" : "Sign in"}
             </Btn>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={resend}
+              className="text-center text-xs text-zinc-500 underline disabled:opacity-40"
+            >
+              Resend code
+            </button>
           </form>
         )}
       </Card>
