@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { deleteQuery, insertQuery, isUniqueViolation, toSqlite, updateQuery } from "./repo";
 import { checkBindings } from "./db";
-import { validateRider } from "./riders";
+import { validateRiderInput } from "./riders";
 
 describe("insertQuery", () => {
   it("builds parameterized INSERT with allowlisted columns in order", () => {
@@ -95,16 +95,17 @@ describe("checkBindings (fail loud on placeholder bugs)", () => {
   });
 });
 
-describe("validateRider", () => {
+describe("validateRiderInput (used by create path)", () => {
   it("trims and accepts valid input", () => {
-    expect(validateRider({ name: "  R. Garcia ", phone: "+639171110011" })).toEqual({
+    expect(validateRiderInput({ name: "  R. Garcia ", phone: "+639171110011" })).toEqual({
       name: "R. Garcia",
       phone: "+639171110011",
+      email: null,
     });
   });
 
   it("rejects empty name or phone", () => {
-    expect(() => validateRider({ name: "", phone: "+6391" })).toThrow(/name/i);
-    expect(() => validateRider({ name: "R", phone: "  " })).toThrow(/phone/i);
+    expect(() => validateRiderInput({ name: "", phone: "+6391" })).toThrow(/name/i);
+    expect(() => validateRiderInput({ name: "R", phone: "  " })).toThrow(/phone/i);
   });
 });

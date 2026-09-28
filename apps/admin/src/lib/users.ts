@@ -82,28 +82,7 @@ export interface TeamUser {
   createdAt: string;
 }
 
-/** Wallet search across name, email, and unique phone (any format). */
-export function filterUsers<T extends { name: string; email: string; phone?: string | null }>(
-  rows: T[],
-  q: string,
-): T[] {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return rows;
-  let digits = "";
-  try {
-    digits = normalizePhPhone(needle);
-  } catch {
-    digits = needle.replace(/\D/g, "");
-  }
-  return rows.filter((r) => {
-    const hay = `${r.name} ${r.email} ${r.phone ?? ""}`.toLowerCase();
-    if (hay.includes(needle)) return true;
-    if (!digits) return false;
-    const rowDigits = (r.phone ?? "").replace(/\D/g, "");
-    return rowDigits.includes(digits.replace(/\D/g, "")) && digits.replace(/\D/g, "").length >= 4;
-  });
-}
-
+export { filterUsers } from "./phone";
 export interface Page {
   page: number;
   pages: number;

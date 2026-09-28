@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import {
   createRiderAction,
   deleteRiderAction,
   setRiderStatusAction,
 } from "./actions";
 import { canBook } from "@/lib/rider";
+import { filterUsers } from "@/lib/phone";
 import type { Rider } from "@/lib/types";
 import { Badge, Btn, Card, Field, inputCls } from "../ui";
 
 export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean }) {
+  const [q, setQ] = useState("");
+  const riders = filterUsers(initial, q);
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -33,6 +37,16 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
           )}
         </form>
       </Card>
+      <Card>
+        <Field label="Search name, email, phone">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Garcia, @example.ph, 0917…"
+            className={inputCls}
+          />
+        </Field>
+      </Card>
       <Card flush>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -46,7 +60,7 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {initial.map((r) => {
+              {riders.map((r) => {
                 const gate = canBook(r);
                 return (
                   <tr key={r.id} className="hover:bg-zinc-50/60">

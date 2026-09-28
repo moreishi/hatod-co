@@ -37,3 +37,25 @@ export function resolveLoginIdentity(raw: string): LoginIdentity {
   if (phone) return { kind: "phone", value: phone };
   throw new Error("invalid login — enter an email or PH mobile number");
 }
+
+/** Table search across name, email, and unique phone (any format). */
+export function filterUsers<T extends { name: string; email?: string | null; phone?: string | null }>(
+  rows: T[],
+  q: string,
+): T[] {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return rows;
+  let digits = "";
+  try {
+    digits = normalizePhPhone(needle);
+  } catch {
+    digits = needle.replace(/\D/g, "");
+  }
+  return rows.filter((r) => {
+    const hay = `${r.name} ${r.email ?? ""} ${r.phone ?? ""}`.toLowerCase();
+    if (hay.includes(needle)) return true;
+    if (!digits) return false;
+    const rowDigits = (r.phone ?? "").replace(/\D/g, "");
+    return rowDigits.includes(digits.replace(/\D/g, "")) && digits.replace(/\D/g, "").length >= 4;
+  });
+}
