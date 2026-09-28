@@ -1,7 +1,15 @@
-import { drivers, trips, zones, docsExpiringSoon } from "@/lib/seed";
+import { docsExpiringSoon } from "@/lib/seed";
+import { listDrivers } from "@/lib/drivers";
+import { listAllTrips } from "@/lib/trips";
+import { listZones } from "@/lib/zones";
 import { Badge, Card, PageHeader } from "./ui";
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  const [drivers, trips, zones] = await Promise.all([
+    listDrivers(),
+    listAllTrips(200),
+    listZones(),
+  ]);
   const online = drivers.filter((d) => d.status === "online").length;
   const pending = drivers.filter((d) => d.status === "pending").length;
   const active = trips.filter(
