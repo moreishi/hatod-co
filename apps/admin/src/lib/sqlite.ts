@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { hashPasswordSync } from "./auth";
 import { drivers, riders, zones } from "./seed";
 
 // Dev-only database. Prod runs Postgres (db/migrations/*.sql).
@@ -38,6 +39,12 @@ CREATE TABLE IF NOT EXISTS riders (
   phone TEXT NOT NULL UNIQUE CHECK (phone <> ''),
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'operations',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );`;
 
 let _db: DatabaseSync | null = null;
@@ -65,8 +72,20 @@ function seedIfEmpty(db: DatabaseSync) {
     const ins = db.prepare("INSERT INTO riders (id, name, phone, status) VALUES (?, ?, ?, ?)");
     for (const r of riders) ins.run(r.id, r.name, r.phone || `pending-${r.id}`, r.status);
   }
-  if (count("drivers") === 0) {
-    const ins = db.prepare(
+  if (count("users") === 0) {
+    // Dev-only bootstrap admin. Prod users come from migration 003 + server-side insert.
+    const password = process.env.ADMIN_PASSWORD ?? "Hatod123!";
+    if (!process.env.ADMIN_PASSWORD)
+      console.warn("[hatod] seeding dev admin admin@hatod.co / Hatod123! — set ADMIN_PASSWORD to override");
+    db.prepare("INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)").run(
+      "usr-admin",
+      "Ops Admin",
+      "admin@hatod.co",
+      hashPasswordSync(password),
+      "superadmin",
+    );
+  }
+  if (count("drivers") === 0) {    const ins = db.prepare(
       "INSERT INTO drivers (id, name, phone, vehicle_type, plate_no, status, pa_expiry, cpc_expiry, license_no) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
     const live = db.prepare("INSERT INTO drivers_live (driver_id, lat, lng) VALUES (?, ?, ?)");
