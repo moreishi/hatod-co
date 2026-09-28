@@ -8,6 +8,7 @@ export async function createRiderAction(formData: FormData) {
   await createRider({
     name: String(formData.get("name") ?? ""),
     phone: String(formData.get("phone") ?? ""),
+    email: String(formData.get("email") ?? "") || null,
   });
   revalidatePath("/riders");
 }

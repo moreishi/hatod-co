@@ -36,6 +36,9 @@ yarn-error.log*
 # local dev database (Postgres is prod)
 *.sqlite3
 
+# local dev uploads (R2 is prod)
+/uploads/
+
 # vercel
 .vercel
 

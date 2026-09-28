@@ -51,3 +51,12 @@ export function deleteQuery(table: string, id: string): SqlQuery {
 export function toSqlite(text: string): string {
   return text.replace(/\$\d+/g, "?");
 }
+
+/** True for Postgres 23505 / SQLite UNIQUE failures — map to friendly dup errors. */
+export function isUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  if (code === "23505" || code === "SQLITE_CONSTRAINT_UNIQUE") return true;
+  const message = (err as { message?: unknown }).message;
+  return typeof message === "string" && /unique constraint failed/i.test(message);
+}

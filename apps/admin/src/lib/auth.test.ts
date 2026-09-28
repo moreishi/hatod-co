@@ -3,17 +3,18 @@ import { hashPassword, parseCredentials, verifyPassword } from "./auth";
 import { canAccess, isPublicPath } from "./access";
 
 describe("parseCredentials", () => {
-  it("accepts valid email + password", () => {
-    expect(
-      parseCredentials({ email: "ops@hatod.co", password: "Hatod123!" }).email,
-    ).toBe("ops@hatod.co");
+  it("accepts email or phone plus password", () => {
+    expect(parseCredentials({ login: "ops@hatod.co", password: "Hatod123!" }).login).toBe(
+      "ops@hatod.co",
+    );
+    expect(parseCredentials({ login: "09171110011", password: "Hatod123!" }).login).toBe(
+      "09171110011",
+    );
   });
 
-  it("rejects bad email and short password", () => {
-    expect(() => parseCredentials({ email: "not-an-email", password: "Hatod123!" })).toThrow(
-      /email/i,
-    );
-    expect(() => parseCredentials({ email: "ops@hatod.co", password: "short" })).toThrow(
+  it("rejects empty login and short password", () => {
+    expect(() => parseCredentials({ login: "  ", password: "Hatod123!" })).toThrow(/login/i);
+    expect(() => parseCredentials({ login: "ops@hatod.co", password: "short" })).toThrow(
       /password/i,
     );
   });
@@ -49,9 +50,18 @@ describe("isPublicPath (proxy allowlist)", () => {
     expect(isPublicPath("/api/auth/callback/credentials")).toBe(true);
   });
 
-  it("protects everything else", () => {
+  it("lets the agency sign-in through", () => {
+    expect(isPublicPath("/fleet/login")).toBe(true);
+  });
+
+  it("lets the driver sign-in through", () => {
+    expect(isPublicPath("/drivers/login")).toBe(true);
+  });
+
+  it("protects app pages, leaves API routes to their own session checks", () => {
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/drivers")).toBe(false);
-    expect(isPublicPath("/api/health")).toBe(false);
+    expect(isPublicPath("/api/health")).toBe(true);
+    expect(isPublicPath("/api/driver-documents")).toBe(true);
   });
 });

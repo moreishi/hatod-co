@@ -20,6 +20,9 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
           <Field label="Phone">
             <input name="phone" required placeholder="+639171110011" className={inputCls} />
           </Field>
+          <Field label="Email (optional)">
+            <input name="email" type="email" placeholder="rider@example.ph" className={inputCls} />
+          </Field>
           <Btn tone="primary" type="submit">
             Add rider
           </Btn>
@@ -32,11 +35,12 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
       </Card>
       <Card flush>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-2">Rider</th>
                 <th className="px-4 py-2">Phone</th>
+                <th className="px-4 py-2">Account</th>
                 <th className="px-4 py-2">Can book</th>
                 <th className="px-4 py-2">Actions</th>
               </tr>
@@ -46,11 +50,21 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
                 const gate = canBook(r);
                 return (
                   <tr key={r.id} className="hover:bg-zinc-50/60">
-                    <td className="px-4 py-2">
-                      <p className="font-medium">{r.name}</p>
-                      <p className="text-xs text-zinc-500">{r.status}</p>
-                    </td>
+                  <td className="px-4 py-2">
+                    <p className="font-medium">{r.name}</p>
+                    <p className="text-xs text-zinc-500">{r.status}</p>
+                    {r.email && <p className="text-xs text-zinc-500">{r.email}</p>}
+                  </td>
                     <td className="px-4 py-2 tabular-nums">{r.phone || "—"}</td>
+                    <td className="px-4 py-2 text-xs">
+                      {r.account ? (
+                        <Badge tone="info">
+                          {r.account.email} · {r.account.role}
+                        </Badge>
+                      ) : (
+                        <span className="text-zinc-400">no account</span>
+                      )}
+                    </td>
                     <td className="px-4 py-2">
                       <Badge tone={gate.ok ? "ok" : "bad"}>
                         {gate.ok ? "Yes" : `No — ${gate.reason}`}

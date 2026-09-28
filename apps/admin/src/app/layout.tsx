@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { canManageUsers, isStaff, type Role } from "@/lib/access";
 import { SignOutBtn } from "./userbar";
 import "./globals.css";
 
@@ -20,12 +21,33 @@ export const metadata: Metadata = {
   description: "Fleet, zones, fares and live dispatch for Hatod ride-hailing pilot",
 };
 
-const NAV = [
+const NAV: { href: string; label: string; admin?: boolean }[] = [
   { href: "/", label: "Dashboard" },
   { href: "/riders", label: "Riders" },
   { href: "/drivers", label: "Drivers" },
   { href: "/zones", label: "Zones & Fares" },
   { href: "/trips", label: "Trips" },
+  { href: "/agency", label: "Agency" },
+  { href: "/wallets", label: "Wallets", admin: true },
+  { href: "/users", label: "Users", admin: true },
+];
+
+const AGENCY_NAV: { href: string; label: string }[] = [
+  { href: "/fleet", label: "Dashboard" },
+  { href: "/fleet/live", label: "Live" },
+  { href: "/fleet/drivers", label: "My drivers" },
+  { href: "/fleet/documents", label: "Docs inbox" },
+  { href: "/fleet/earnings", label: "Earnings" },
+  { href: "/fleet/wallet", label: "Wallet" },
+];
+
+const DRIVER_NAV: { href: string; label: string }[] = [
+  { href: "/drivers/me", label: "Home" },
+  { href: "/drivers/me/trips", label: "Trips" },
+  { href: "/drivers/me/documents", label: "Documents" },
+  { href: "/drivers/me/wallet", label: "Wallet" },
+  { href: "/drivers/me/profile", label: "Profile" },
+  { href: "/drivers/me/settings", label: "Settings" },
 ];
 
 export default async function RootLayout({
@@ -35,6 +57,15 @@ export default async function RootLayout({
 }>) {
   const session = await auth();
   const loggedIn = !!session?.user;
+  const role = (session?.user as { role?: Role } | undefined)?.role;
+  const roles = (session?.user as { roles?: Role[] } | undefined)?.roles ?? [];
+  const staff = roles.some((r) => isStaff(r)) || (role ? isStaff(role) : false);
+  const agency = !staff && roles.includes("agency");
+  const nav = staff
+    ? NAV.filter((n) => !n.admin || (role && canManageUsers(role)))
+    : agency
+      ? AGENCY_NAV
+      : DRIVER_NAV;
   return (
     <html
       lang="en"
@@ -56,7 +87,7 @@ export default async function RootLayout({
                   )}
                 </div>
                 <nav className="flex flex-row gap-1 p-2 md:flex-col lg:p-0">
-                  {NAV.map((n) => (
+                  {nav.map((n) => (
                     <Link
                       key={n.href}
                       href={n.href}
@@ -76,7 +107,7 @@ export default async function RootLayout({
               <header className="bg-zinc-950 text-zinc-100 md:hidden">
                 <p className="px-4 pt-3 text-base font-bold">Hatod Admin</p>
                 <nav className="flex gap-1 overflow-x-auto p-2">
-                  {NAV.map((n) => (
+                  {nav.map((n) => (
                     <Link
                       key={n.href}
                       href={n.href}

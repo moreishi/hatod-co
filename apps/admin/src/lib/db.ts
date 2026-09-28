@@ -18,8 +18,23 @@ function pg() {
   return _pg;
 }
 
+/**
+ * Every $n must have exactly one bound value on BOTH dialects: Postgres
+ * reuses numbers but SQLite expands them positionally, so a reused $n with
+ * a single value silently mis-binds. Fail loud instead of wrong rows.
+ */
+export function checkBindings(text: string, values: unknown[]): void {
+  const all = text.match(/\$\d+/g) ?? [];
+  const distinct = new Set(all);
+  const max = distinct.size === 0 ? 0 : Math.max(...[...distinct].map((s) => Number(s.slice(1))));
+  // $1..$n each exactly once: Postgres-safe AND SQLite-safe (which expands positionally).
+  if (all.length !== values.length || max !== values.length || distinct.size !== values.length)
+    throw new Error(`binding mismatch: "${text.slice(0, 60)}…" has ${all.length} slots for ${values.length} values`);
+}
+
 /** Run parameterized SQL on Postgres ($n) or dev SQLite (?) — same row shape. */
 export async function queryDb<T>(text: string, values: unknown[]): Promise<T[]> {
+  checkBindings(text, values);
   if (hasDb()) {
     return (await pg().unsafe(
       text,

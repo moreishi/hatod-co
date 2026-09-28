@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deleteQuery, insertQuery, toSqlite, updateQuery } from "./repo";
+import { deleteQuery, insertQuery, isUniqueViolation, toSqlite, updateQuery } from "./repo";
+import { checkBindings } from "./db";
 import { validateRider } from "./riders";
 
 describe("insertQuery", () => {
@@ -58,6 +59,39 @@ describe("toSqlite", () => {
 
   it("leaves placeholder-free SQL untouched", () => {
     expect(toSqlite("SELECT 1")).toBe("SELECT 1");
+  });
+});
+
+describe("isUniqueViolation", () => {
+  it("detects Postgres and SQLite unique errors", () => {
+    expect(isUniqueViolation({ code: "23505" })).toBe(true);
+    expect(isUniqueViolation({ code: "SQLITE_CONSTRAINT_UNIQUE" })).toBe(true);
+    expect(isUniqueViolation(new Error("UNIQUE constraint failed: riders.phone"))).toBe(true);
+  });
+
+  it("ignores other errors", () => {
+    expect(isUniqueViolation({ code: "23503" })).toBe(false);
+    expect(isUniqueViolation(new Error("no such table"))).toBe(false);
+    expect(isUniqueViolation(null)).toBe(false);
+  });
+});
+
+describe("checkBindings (fail loud on placeholder bugs)", () => {
+  it("accepts $1..$n each exactly once", () => {
+    expect(() => checkBindings("SELECT * FROM t WHERE a = $1 AND b = $2", [1, 2])).not.toThrow();
+    expect(() => checkBindings("SELECT 1", [])).not.toThrow();
+  });
+
+  it("rejects reused numbers and count mismatches", () => {
+    expect(() => checkBindings("SELECT * FROM t WHERE a = $1 OR b = $1", [1])).toThrow(
+      /binding mismatch/i,
+    );
+    expect(() => checkBindings("SELECT * FROM t WHERE a = $1", [1, 2])).toThrow(
+      /binding mismatch/i,
+    );
+    expect(() => checkBindings("SELECT * FROM t WHERE a = $2", [1])).toThrow(
+      /binding mismatch/i,
+    );
   });
 });
 

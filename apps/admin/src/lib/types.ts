@@ -25,6 +25,10 @@ export interface Driver {
   lat: number;
   lng: number;
   updatedAt: string;
+  /** Owning agency account (users.id) — null for directly-onboarded drivers. */
+  agencyUserId?: string | null;
+  /** Login account (users.id) — null until a login is created. */
+  userId?: string | null;
 }
 
 export interface ZonePricing {
@@ -48,14 +52,18 @@ export interface Rider {
   id: string;
   name: string;
   phone: string;
+  email?: string | null;
   status: RiderStatus;
   createdAt: string;
+  /** Linked login account (users.role driver/rider), if one exists. */
+  account?: { email: string; role: string } | null;
 }
 
 export interface Trip {
   id: string;
   zoneId: string;
   riderName: string;
+  riderId?: string | null;
   driverId: string | null;
   status: TripStatus;
   pickup: string;
@@ -64,5 +72,6 @@ export interface Trip {
   durationS: number;
   fareQuote: number;
   payment: "cash" | "gcash";
+  paid?: boolean;
   createdAt: string;
 }

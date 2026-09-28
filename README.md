@@ -13,7 +13,9 @@ Cash + GCash first, LTFRB-compliant fleet ops.
 | DB prod | Postgres 16 + PostGIS (`db/migrations`) |
 | DB dev | SQLite via `node:sqlite` (zero-install, auto-seeded) |
 | Maps | Google Places + Routes (search/route only); live positions stream over SSE |
-| Payments | Cash + manual GCash v1 → PayMongo v2 |
+| Payments | **Cash only** (policy enforced in `createTrip`). GCash via PayMongo is |
+| | specced and parked: `apps/admin/src/lib/paymongo.ts` + `014_payments.sql` |
+| | activate when e-wallets launch (needs `PAYMONGO_SECRET_KEY`). |
 
 ## Quickstart (5 min, no Docker)
 
@@ -26,8 +28,18 @@ cp .env.example .env   # then set AUTH_SECRET: openssl rand -base64 32
 npm run dev            # http://localhost:3000
 ```
 
-Login with the seeded dev admin: `admin@hatod.co` / `Hatod123!`
-(override with `ADMIN_PASSWORD` in `.env`).
+Login with a seeded dev account (password `Hatod123!` for all — dev only,
+never in prod migrations):
+
+| Email | Role | Sees |
+|---|---|---|
+| `admin@hatod.co` | superadmin | full panel + Users |
+| `ops@hatod.co` | operations | full panel, no Users |
+| `finance@hatod.co` / `support@hatod.co` | finance / support | full panel, no Users |
+| `agency@hatod.co` | agency | `/fleet` portal (dashboard, drivers, earnings) |
+| `driver@hatod.co` / `rider@hatod.co` | driver / rider | `/no-access` (app identities for mobile later) |
+
+Override the admin password with `ADMIN_PASSWORD` in `.env`.
 
 Checks every change must pass:
 

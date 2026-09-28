@@ -5,7 +5,7 @@ import { z } from "zod";
 const scrypt = promisify(_scrypt);
 
 export const CredentialsSchema = z.object({
-  email: z.string().email("invalid email"),
+  login: z.string().trim().min(1, "email or phone is required"),
   password: z.string().min(8, "password must be at least 8 characters"),
 });
 
