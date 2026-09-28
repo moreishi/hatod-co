@@ -77,6 +77,11 @@ export function UserTable({
                       {u.name}
                     </a>
                     <p className="text-xs text-zinc-500">{u.email}</p>
+                    {!u.active && (
+                      <p>
+                        <Badge tone="bad">suspended</Badge>
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-2">
                     <Badge tone={u.role === "superadmin" ? "info" : "neutral"}>

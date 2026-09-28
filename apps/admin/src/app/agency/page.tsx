@@ -46,6 +46,9 @@ export default async function AgencyPage() {
                   <td className="px-4 py-2">
                     <p className="font-medium">{a.businessName}</p>
                     <p className="text-xs text-zinc-500 tabular-nums">{a.id}</p>
+                    {a.applicantEmail && (
+                      <p className="text-xs text-zinc-500">{a.applicantEmail}</p>
+                    )}
                   </td>
                   <td className="px-4 py-2 tabular-nums">{a.contactPhone}</td>
                   <td className="px-4 py-2">

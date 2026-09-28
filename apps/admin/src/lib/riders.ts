@@ -1,4 +1,5 @@
 import { deleteQuery, insertQuery, isUniqueViolation, updateQuery } from "./repo";
+import { canOffboard } from "./driverRules";
 import { hasDb, queryDb } from "./db";
 import type { Rider, RiderStatus } from "./types";
 
@@ -8,14 +9,6 @@ export interface NewRider {
   name: string;
   phone: string;
   email?: string | null;
-}
-
-export function validateRider(input: NewRider): NewRider {
-  const name = input.name.trim();
-  const phone = input.phone.trim();
-  if (!name) throw new Error("name is required");
-  if (!phone) throw new Error("phone is required");
-  return { name, phone };
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,6 +85,9 @@ export async function setRiderStatus(id: string, status: RiderStatus): Promise<R
 }
 
 export async function deleteRider(id: string): Promise<void> {
+  const trips = await queryDb("SELECT id FROM trips WHERE rider_id = $1 LIMIT 1", [id]);
+  const gate = canOffboard(trips.length);
+  if (!gate.ok) throw new Error(gate.reason ?? "cannot delete");
   const q = deleteQuery("riders", id);
   await queryDb(q.text, q.values);
 }

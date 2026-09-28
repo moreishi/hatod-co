@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { isStaff, type Role } from "@/lib/access";
-import { acceptOffer, setTripStatus } from "@/lib/trips";
+import { acceptOffer, createTrip, setTripStatus } from "@/lib/trips";
+import { settleTrip } from "@/lib/wallet";
+import { calculateFare } from "@/lib/fare";
+import { listZones } from "@/lib/zones";
 import type { TripStatus } from "@/lib/types";
 
 async function staff() {
@@ -23,5 +26,36 @@ export async function assignTripAction(tripId: string, driverId: string) {
 export async function setTripStatusAction(tripId: string, status: TripStatus) {
   await staff();
   await setTripStatus(tripId, status);
+  // Same settlement as the driver path (idempotent — double completion is safe).
+  if (status === "COMPLETED") {
+    try {
+      await settleTrip(tripId);
+    } catch (e) {
+      // Demo/unlinked trips settle nothing — log loudly instead of failing the completion.
+      console.warn(`[trips] settle skipped for ${tripId}:`, e instanceof Error ? e.message : e);
+    }
+  }
+  revalidatePath("/trips");
+}
+
+/** Manual trip creation (phone ops): fare quoted server-side from zone pricing. */
+export async function createTripAction(formData: FormData) {
+  await staff();
+  const zoneId = String(formData.get("zoneId") ?? "");
+  const zones = await listZones();
+  const zone = zones.find((z) => z.id === zoneId);
+  if (!zone) throw new Error("unknown zone");
+  const distanceM = Number(formData.get("distanceM") ?? 0);
+  const durationS = Number(formData.get("durationS") ?? 0);
+  await createTrip({
+    zoneId,
+    riderName: String(formData.get("riderName") ?? "").trim() || "Walk-in rider",
+    pickup: String(formData.get("pickup") ?? "").trim(),
+    dropoff: String(formData.get("dropoff") ?? "").trim(),
+    distanceM,
+    durationS,
+    fareQuote: calculateFare({ distanceM, durationS, pricing: zone.pricing }),
+    payment: "cash",
+  });
   revalidatePath("/trips");
 }

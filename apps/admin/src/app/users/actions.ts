@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { canManageUsers, ROLES, type Role } from "@/lib/access";
-import { createUser, deleteUser, setUserRoles } from "@/lib/users";
+import { createUser, deleteUser, setActive, setUserRoles, updateIdentity } from "@/lib/users";
 
 async function actor() {
   const session = await auth();
@@ -25,9 +25,28 @@ export async function createUserAction(formData: FormData) {
 }
 
 export async function setUserRolesAction(id: string, formData: FormData) {
-  await actor();
+  const { id: actorId } = await actor();
   const roles = formData.getAll("roles").map(String).filter((r) => ROLES.includes(r as Role));
-  await setUserRoles(id, roles);
+  await setUserRoles(id, roles, actorId);
+  revalidatePath("/users");
+  revalidatePath(`/users/${id}`);
+}
+
+export async function updateIdentityAction(id: string, formData: FormData) {
+  await actor();
+  await updateIdentity(id, {
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+  });
+  revalidatePath(`/users/${id}`);
+  revalidatePath("/users");
+}
+
+export async function setActiveAction(id: string, active: boolean) {
+  const { id: actorId } = await actor();
+  await setActive(id, active, actorId);
+  revalidatePath(`/users/${id}`);
   revalidatePath("/users");
 }
 

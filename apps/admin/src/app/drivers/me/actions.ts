@@ -40,7 +40,14 @@ export async function advanceTripAction(tripId: string, to: TripStatus) {
   if (!trip || trip.driverId !== profile.id) throw new Error("not your trip");
   await setTripStatus(tripId, to);
   // Wallet settlement on completion (idempotent — safe on double-click).
-  if (to === "COMPLETED") await settleTrip(tripId);
+  // Unlinked demo trips settle nothing; completion still goes through.
+  if (to === "COMPLETED") {
+    try {
+      await settleTrip(tripId);
+    } catch (e) {
+      console.warn(`[trips] settle skipped for ${tripId}:`, e instanceof Error ? e.message : e);
+    }
+  }
   revalidatePath("/drivers/me");
 }
 

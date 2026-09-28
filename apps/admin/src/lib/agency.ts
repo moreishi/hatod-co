@@ -36,12 +36,14 @@ function rowToApp(row: Record<string, unknown>): AgencyApplication {
     contactPhone: String(row.contact_phone),
     status: row.status as AgencyStatus,
     createdAt: new Date(row.created_at as string).toISOString(),
+    applicantEmail: row.account_email == null ? null : String(row.account_email),
   };
 }
 
 export async function listApplications(): Promise<AgencyApplication[]> {
   const rows = await queryDb<Record<string, unknown>>(
-    `SELECT * FROM agency_applications ORDER BY
+    `SELECT a.*, u.email AS account_email FROM agency_applications a
+     LEFT JOIN users u ON u.id = a.user_id ORDER BY
      CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC`,
     [],
   );
