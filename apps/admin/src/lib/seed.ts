@@ -1,4 +1,4 @@
-import type { Driver, Trip, Zone } from "./types";
+import type { Driver, Rider, Trip, Zone } from "./types";
 
 // Gensan pilot zones — coarse polygons replaced by named service areas for v1.
 export const zones: Zone[] = [
@@ -61,6 +61,30 @@ export const drivers: Driver[] = [
     lat: 6.12,
     lng: 125.165,
     updatedAt: new Date().toISOString(),
+  },
+];
+
+export const riders: Rider[] = [
+  {
+    id: "rdr-001",
+    name: "R. Garcia",
+    phone: "+639171110011",
+    status: "active",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "rdr-002",
+    name: "K. Tan",
+    phone: "+639171110022",
+    status: "active",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "rdr-003",
+    name: "J. Cruz",
+    phone: "",
+    status: "suspended",
+    createdAt: new Date().toISOString(),
   },
 ];
 

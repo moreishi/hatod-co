@@ -42,6 +42,16 @@ export interface Zone {
   gcashEnabled: boolean;
 }
 
+export type RiderStatus = "active" | "suspended";
+
+export interface Rider {
+  id: string;
+  name: string;
+  phone: string;
+  status: RiderStatus;
+  createdAt: string;
+}
+
 export interface Trip {
   id: string;
   zoneId: string;

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { drivers, trips as seed } from "@/lib/seed";
 import type { TripStatus } from "@/lib/types";
+import { Badge, Btn, Card, PageHeader, inputCls } from "../ui";
 
 export default function TripsPage() {
   const [trips, setTrips] = useState(seed);
@@ -14,10 +15,11 @@ export default function TripsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Live dispatch — manual fallback</h1>
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-zinc-50 text-xs text-zinc-500">
+      <PageHeader title="Live dispatch — manual fallback" />
+      <Card flush>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
             <tr>
               <th className="px-4 py-2">Trip</th>
               <th className="px-4 py-2">Route</th>
@@ -26,19 +28,33 @@ export default function TripsPage() {
               <th className="px-4 py-2">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-zinc-100">
             {trips.map((t) => (
-              <tr key={t.id} className="border-t">
+              <tr key={t.id} className="hover:bg-zinc-50/60">
                 <td className="px-4 py-2">
-                  <p className="font-medium">{t.id}</p>
+                  <p className="font-medium tabular-nums">{t.id}</p>
                   <p className="text-xs text-zinc-500">
-                    {t.riderName} · ₱{t.fareQuote} {t.payment}
+                    {t.riderName} · <span className="font-semibold text-zinc-700">₱{t.fareQuote}</span> {t.payment}
                   </p>
                 </td>
                 <td className="px-4 py-2 text-xs">
                   {t.pickup} → {t.dropoff}
                 </td>
-                <td className="px-4 py-2">{t.status}</td>
+                <td className="px-4 py-2">
+                  <Badge
+                    tone={
+                      t.status === "SEARCHING"
+                        ? "warn"
+                        : t.status === "IN_PROGRESS" || t.status === "ACCEPTED"
+                          ? "info"
+                          : t.status === "COMPLETED"
+                            ? "ok"
+                            : "neutral"
+                    }
+                  >
+                    {t.status}
+                  </Badge>
+                </td>
                 <td className="px-4 py-2">
                   <select
                     value={t.driverId ?? ""}
@@ -48,7 +64,7 @@ export default function TripsPage() {
                         status: e.target.value ? "ACCEPTED" : t.status,
                       })
                     }
-                    className="rounded border px-2 py-1 text-xs"
+                    className={`${inputCls} text-xs`}
                   >
                     <option value="">Unassigned</option>
                     {onlineDrivers.map((d) => (
@@ -60,25 +76,20 @@ export default function TripsPage() {
                 </td>
                 <td className="px-4 py-2">
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      className="rounded bg-zinc-700 px-2 py-1 text-xs text-white"
-                      onClick={() => setTrip(t.id, { status: "COMPLETED" })}
-                    >
+                    <Btn onClick={() => setTrip(t.id, { status: "COMPLETED" })}>
                       Complete
-                    </button>
-                    <button
-                      className="rounded bg-red-600 px-2 py-1 text-xs text-white"
-                      onClick={() => setTrip(t.id, { status: "CANCELLED" })}
-                    >
+                    </Btn>
+                    <Btn tone="danger" onClick={() => setTrip(t.id, { status: "CANCELLED" })}>
                       Cancel
-                    </button>
+                    </Btn>
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

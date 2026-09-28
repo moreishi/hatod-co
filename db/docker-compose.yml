@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: hatod-db
+    environment:
+      POSTGRES_USER: hatod
+      POSTGRES_PASSWORD: hatod
+      POSTGRES_DB: hatod
+    ports:
+      - "5432:5432"
+    volumes:
+      - hatod-pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  hatod-pgdata:

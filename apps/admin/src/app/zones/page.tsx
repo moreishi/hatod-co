@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { zones as seed } from "@/lib/seed";
 import { calculateFare } from "@/lib/fare";
+import { Badge, Card, Field, PageHeader, inputCls } from "../ui";
 
 export default function ZonesPage() {
   const [zones, setZones] = useState(seed);
@@ -31,57 +32,56 @@ export default function ZonesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Zones & fares — Gensan</h1>
-      <div className="rounded-xl bg-white p-4 shadow-sm">
+      <PageHeader title="Zones & fares — Gensan" />
+      <Card>
         <h2 className="mb-2 font-semibold">Fare preview</h2>
-        <div className="flex gap-4 text-sm">
-          <label>
-            Km{" "}
+        <div className="flex flex-wrap gap-4 text-sm">
+          <Field label="Km">
             <input
               type="number"
               value={km}
               min={0}
               onChange={(e) => setKm(Number(e.target.value))}
-              className="w-20 rounded border px-2 py-1"
+              className={`${inputCls} w-20`}
             />
-          </label>
-          <label>
-            Min{" "}
+          </Field>
+          <Field label="Min">
             <input
               type="number"
               value={min}
               min={0}
               onChange={(e) => setMin(Number(e.target.value))}
-              className="w-20 rounded border px-2 py-1"
+              className={`${inputCls} w-20`}
             />
-          </label>
+          </Field>
         </div>
-        <ul className="mt-2 text-sm">
+        <ul className="mt-3 flex flex-wrap gap-2 text-sm">
           {previews.map((p) => (
             <li key={p.id}>
-              {p.name}: <strong>₱{p.fare}</strong>
+              <Badge tone="ok">
+                {p.name}: ₱{p.fare}
+              </Badge>
             </li>
           ))}
         </ul>
-      </div>
+      </Card>
       {zones.map((z) => (
-        <div key={z.id} className="rounded-xl bg-white p-4 shadow-sm">
+        <Card key={z.id}>
           <h2 className="font-semibold">{z.name}</h2>
           <div className="mt-2 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
             {(["base", "perKm", "perMin", "minimum"] as const).map((k) => (
-              <label key={k} className="flex flex-col gap-1">
-                {k}
+              <Field key={k} label={k}>
                 <input
                   type="number"
                   value={z.pricing[k]}
                   min={0}
                   onChange={(e) => update(z.id, k, Number(e.target.value))}
-                  className="rounded border px-2 py-1"
+                  className={inputCls}
                 />
-              </label>
+              </Field>
             ))}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );
