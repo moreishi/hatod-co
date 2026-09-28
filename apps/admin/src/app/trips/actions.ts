@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { isStaff, type Role } from "@/lib/access";
 import { acceptOffer, createTrip, setTripStatus } from "@/lib/trips";
+import { settleTrip } from "@/lib/wallet";
 import { calculateFare } from "@/lib/fare";
 import { listZones } from "@/lib/zones";
 import type { TripStatus } from "@/lib/types";
@@ -25,6 +26,15 @@ export async function assignTripAction(tripId: string, driverId: string) {
 export async function setTripStatusAction(tripId: string, status: TripStatus) {
   await staff();
   await setTripStatus(tripId, status);
+  // Same settlement as the driver path (idempotent — double completion is safe).
+  if (status === "COMPLETED") {
+    try {
+      await settleTrip(tripId);
+    } catch (e) {
+      // Demo/unlinked trips settle nothing — log loudly instead of failing the completion.
+      console.warn(`[trips] settle skipped for ${tripId}:`, e instanceof Error ? e.message : e);
+    }
+  }
   revalidatePath("/trips");
 }
 
