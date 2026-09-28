@@ -45,6 +45,11 @@ export function canManageUsers(role: Role): boolean {
   return role === "superadmin";
 }
 
+/** Sign-in gate: active account with a known role. Suspended users fail closed. */
+export function accountUsable(user: { active: boolean; role: string }): boolean {
+  return user.active === true && ROLES.includes(user.role as Role);
+}
+
 /** Agency applications are reviewed by superadmin or operations. */
 export function canReviewAgency(role: Role): boolean {
   return role === "superadmin" || role === "operations";

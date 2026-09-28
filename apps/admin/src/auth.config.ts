@@ -8,7 +8,8 @@ import type { Role } from "@/lib/access";
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   secret: process.env.AUTH_SECRET,
-  session: { strategy: "jwt" },
+  // Short sessions bound the window a suspended account stays usable (see 018).
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },

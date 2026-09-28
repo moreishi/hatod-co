@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY, name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'operations', phone TEXT UNIQUE,
+  active INTEGER NOT NULL DEFAULT 1, last_login_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS user_roles (
@@ -65,6 +66,15 @@ CREATE TABLE IF NOT EXISTS agency_applications (
   decided_by TEXT REFERENCES users(id), decided_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS role_grants (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  granted INTEGER NOT NULL,
+  actor_id TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS role_grants_user_idx ON role_grants (user_id);
 CREATE TABLE IF NOT EXISTS onboarding_steps (
   application_id TEXT NOT NULL REFERENCES agency_applications(id) ON DELETE CASCADE,
   step TEXT NOT NULL,
@@ -255,6 +265,8 @@ function migrate(db: DatabaseSync) {
     if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
   };
   ensure("riders", "user_id", "user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  ensure("users", "active", "active INTEGER NOT NULL DEFAULT 1");
+  ensure("users", "last_login_at", "last_login_at TEXT");
   ensure("riders", "email", "email TEXT");
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS riders_email_uidx ON riders(email)");
   ensure("drivers", "user_id", "user_id TEXT REFERENCES users(id) ON DELETE SET NULL");

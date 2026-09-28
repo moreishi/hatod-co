@@ -6,11 +6,13 @@ import { ROLES, type Role } from "@/lib/access";
 import { queryDb } from "@/lib/db";
 import { verifyOtp } from "@/lib/otpStore";
 
+import { accountUsable } from "@/lib/access";
 interface UserRow {
   id: string;
   name: string;
   email: string;
   role: string;
+  active: boolean | number;
 }
 
 /** OTP identity: users.phone first, then driver profiles linked to accounts. */
@@ -74,9 +76,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
         if (!u) return null;
+        // Suspended accounts fail closed (existing JWTs expire within hours — see maxAge).
+        if (!accountUsable({ active: u.active === true || u.active === 1, role: u.role }))
+          return null;
         if (!ROLES.includes(u.role as Role)) return null;
         const roles = await loadRoles(u.id, u.role).catch(() => [u.role as Role]);
         const primary = roles.includes("superadmin") ? "superadmin" : roles[0];
+        await queryDb("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1", [
+          u.id,
+        ]).catch(() => undefined);
         return { id: u.id, name: u.name, email: u.email, role: primary, roles };
       },
     }),

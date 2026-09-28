@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { deleteQuery, insertQuery } from "./repo";
+import { deleteQuery, insertQuery, isUniqueViolation } from "./repo";
 import { normalizePhPhone } from "./phone";
 import { ROLES, type Role } from "./access";
 import { hasDb, queryDb } from "./db";
@@ -42,6 +42,27 @@ export function parseRoles(input: unknown): Role[] {
   return [...new Set(roles)] as Role[];
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Editable identity (detail page): name/email required, phone normalized. */
+export function validateIdentity(input: {
+  name: string;
+  email: string;
+  phone: string;
+}): { name: string; email: string; phone: string } {
+  const name = input.name.trim();
+  if (!name) throw new Error("name is required");
+  const email = input.email.trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) throw new Error("invalid email");
+  let phone: string;
+  try {
+    phone = normalizePhPhone(input.phone);
+  } catch {
+    throw new Error("invalid phone");
+  }
+  return { name, email, phone };
+}
+
 /** Role dropdown filter: empty keeps every role set. */
 export function filterByRole<T extends { roles: Role[] }>(rows: T[], role: string): T[] {
   if (!role) return rows;
@@ -56,6 +77,8 @@ export interface TeamUser {
   phone: string | null;
   role: Role;
   roles: Role[];
+  active: boolean;
+  lastLoginAt: string | null;
   createdAt: string;
 }
 
@@ -115,15 +138,20 @@ function rowToUser(row: Record<string, unknown>): TeamUser {
     phone: row.phone == null ? null : String(row.phone),
     role: roles.includes("superadmin") ? "superadmin" : (roles[0] ?? legacy),
     roles,
+    active: row.active == null ? true : row.active === true || row.active === 1,
+    lastLoginAt: row.last_login_at == null ? null : new Date(row.last_login_at as string).toISOString(),
     createdAt: new Date(row.created_at as string).toISOString(),
   };
 }
 
-const USER_LIST_PG = `SELECT u.id, u.name, u.email, u.phone, u.role AS legacy, u.created_at,
+const USER_COLS = `u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role AS legacy, u.created_at`;
+const USER_GROUP_PG = `GROUP BY u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role, u.created_at`;
+
+const USER_LIST_PG = `SELECT ${USER_COLS},
   COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
   FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
-  GROUP BY u.id, u.name, u.email, u.phone, u.role, u.created_at ORDER BY u.created_at ASC`;
-const USER_LIST_SQLITE = `SELECT u.id, u.name, u.email, u.phone, u.role AS legacy, u.created_at,
+  ${USER_GROUP_PG} ORDER BY u.created_at ASC`;
+const USER_LIST_SQLITE = `SELECT ${USER_COLS},
   group_concat(ur.role) AS roles
   FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
   GROUP BY u.id ORDER BY u.created_at ASC`;
@@ -176,9 +204,9 @@ export async function listUsersPaged(
   const total = Number(totalRows[0]?.n ?? 0);
   const { page: safe, pages, offset, limit } = paginate(total, page, PER_PAGE);
   const rows = await queryDb<Record<string, unknown>>(
-    `SELECT u.id, u.name, u.email, u.phone, u.role AS legacy, u.created_at, ${agg} AS roles
+    `SELECT u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role AS legacy, u.created_at, ${agg} AS roles
      FROM users u LEFT JOIN user_roles urr ON urr.user_id = u.id ${where}
-     GROUP BY u.id, u.name, u.email, u.phone, u.role, u.created_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`,
+     GROUP BY u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role, u.created_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`,
     params as unknown[],
   );
   return { rows: rows.map(rowToUser), total, page: safe, pages };
@@ -190,9 +218,9 @@ export async function getUserById(id: string): Promise<TeamUser | null> {
     ? `COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}')`
     : `group_concat(ur.role)`;
   const rows = await queryDb<Record<string, unknown>>(
-    `SELECT u.id, u.name, u.email, u.phone, u.role AS legacy, u.created_at, ${agg} AS roles
+    `SELECT u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role AS legacy, u.created_at, ${agg} AS roles
      FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
-     WHERE u.id = $1 GROUP BY u.id, u.name, u.email, u.phone, u.role, u.created_at`,
+     WHERE u.id = $1 GROUP BY u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role, u.created_at`,
     [id],
   );
   return rows.length > 0 ? rowToUser(rows[0]) : null;
@@ -217,8 +245,13 @@ export async function createUser(input: unknown): Promise<TeamUser> {
 }
 
 /** Replace a user's profile set (checkbox UI). Legacy primary follows the set. */
-export async function setUserRoles(id: string, roles: unknown): Promise<TeamUser> {
+export async function setUserRoles(
+  id: string,
+  roles: unknown,
+  actorId?: string,
+): Promise<TeamUser> {
   const clean = parseRoles(roles);
+  const before = await getUserById(id);
   const primary = clean.includes("superadmin") ? "superadmin" : clean[0];
   await queryDb("DELETE FROM user_roles WHERE user_id = $1", [id]);
   for (const role of clean) {
@@ -226,11 +259,119 @@ export async function setUserRoles(id: string, roles: unknown): Promise<TeamUser
     await queryDb(q.text, q.values);
   }
   await queryDb("UPDATE users SET role = $1 WHERE id = $2", [primary, id]);
+  // Audit the diff (grants + revocations) under the acting admin.
+  const had = new Set(before?.roles ?? []);
+  const has = new Set(clean);
+  for (const role of clean) {
+    if (!had.has(role)) await recordRoleGrant(id, role, true, actorId ?? null);
+  }
+  for (const role of had) {
+    if (!has.has(role)) await recordRoleGrant(id, role, false, actorId ?? null);
+  }
   const [user] = await queryDb<Record<string, unknown>>(
     "SELECT id, name, email, role AS legacy, created_at FROM users WHERE id = $1",
     [id],
   );
   return { ...rowToUser({ ...user, roles: clean.join(",") }), roles: clean };
+}
+
+async function recordRoleGrant(
+  userId: string,
+  role: Role,
+  granted: boolean,
+  actorId: string | null,
+): Promise<void> {
+  const q = insertQuery("role_grants", ["id", "user_id", "role", "granted", "actor_id"], {
+    id: `rg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    user_id: userId,
+    role,
+    granted: granted ? 1 : 0,
+    actor_id: actorId,
+  });
+  await queryDb(q.text, q.values);
+}
+
+export interface RoleGrant {
+  id: string;
+  role: string;
+  granted: boolean;
+  actorId: string | null;
+  createdAt: string;
+}
+
+export async function listRoleGrants(userId: string): Promise<RoleGrant[]> {
+  const rows = await queryDb<Record<string, unknown>>(
+    "SELECT * FROM role_grants WHERE user_id = $1 ORDER BY created_at DESC LIMIT 30",
+    [userId],
+  );
+  return rows.map((r) => ({
+    id: String(r.id),
+    role: String(r.role),
+    granted: r.granted === true || r.granted === 1,
+    actorId: r.actor_id == null ? null : String(r.actor_id),
+    createdAt: new Date(r.created_at as string).toISOString(),
+  }));
+}
+
+/** Edit identity (detail page). Uniqueness enforced by DB, mapped friendly. */
+export async function updateIdentity(
+  id: string,
+  input: { name: string; email: string; phone: string },
+): Promise<TeamUser> {
+  const clean = validateIdentity(input);
+  try {
+    await queryDb("UPDATE users SET name = $1, email = $2, phone = $3 WHERE id = $4", [
+      clean.name,
+      clean.email,
+      clean.phone,
+      id,
+    ]);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const msg = String((err as { message?: string }).message ?? "");
+      throw new Error(/email/i.test(msg) ? "email already registered" : "phone already registered");
+    }
+    throw err;
+  }
+  const updated = await getUserById(id);
+  if (!updated) throw new Error("account not found");
+  return updated;
+}
+
+/** Suspend (false) or restore (true). Suspended accounts fail closed at sign-in. */
+export async function setActive(id: string, active: boolean, actorId: string): Promise<TeamUser> {
+  if (id === actorId) throw new Error("cannot suspend your own account");
+  await queryDb("UPDATE users SET active = $1 WHERE id = $2", [active ? 1 : 0, id]);
+  const updated = await getUserById(id);
+  if (!updated) throw new Error("account not found");
+  return updated;
+}
+
+export interface UserLinks {
+  riderId: string | null;
+  driverId: string | null;
+  applications: { id: string; businessName: string; status: string }[];
+}
+
+/** Everything attached to one login: profiles + agency applications. */
+export async function getUserLinks(userId: string): Promise<UserLinks> {
+  const [riders, drivers, apps] = await Promise.all([
+    queryDb<{ id: string }>("SELECT id FROM riders WHERE user_id = $1", [userId]),
+    queryDb<{ id: string }>("SELECT id FROM drivers WHERE user_id = $1", [userId]),
+    queryDb<Record<string, unknown>>(
+      "SELECT id, business_name, status FROM agency_applications WHERE user_id = $1 ORDER BY created_at DESC",
+      [userId],
+    ),
+  ]);
+  return {
+    riderId: riders[0]?.id ?? null,
+    driverId: drivers[0]?.id ?? null,
+    applications: apps.map((a) => ({
+      id: String(a.id),
+      businessName: String(a.business_name),
+      status: String(a.status),
+    })),
+  };
 }
 
 export async function deleteUser(id: string, actorId: string): Promise<void> {

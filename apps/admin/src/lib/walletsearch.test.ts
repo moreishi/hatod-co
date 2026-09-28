@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { filterByRole, filterUsers, getUserById, paginate } from "./users";
+import { filterByRole, filterUsers, getUserById, paginate, validateIdentity } from "./users";
+import { accountUsable } from "./access";
 
 const rows = [
   { userId: "u1", name: "Sam Ops", email: "ops@hatod.co", phone: "+639170000011", balanceCents: 0 },
@@ -44,5 +45,31 @@ describe("getUserById", () => {
     expect(u?.email).toBe("admin@hatod.co");
     expect(u?.roles).toContain("superadmin");
     expect(await getUserById("nope")).toBeNull();
+  });
+});
+
+describe("validateIdentity (editable name/email/phone)", () => {
+  it("trims, lowercases email, normalizes phone", () => {
+    expect(
+      validateIdentity({ name: " Ops ", email: "OPS@hatod.co", phone: "09171110011" }),
+    ).toEqual({ name: "Ops", email: "ops@hatod.co", phone: "+639171110011" });
+  });
+
+  it("rejects bad fields", () => {
+    const base = { name: "Ops", email: "ops@hatod.co", phone: "09171110011" };
+    expect(() => validateIdentity({ ...base, name: " " })).toThrow(/name/i);
+    expect(() => validateIdentity({ ...base, email: "nope" })).toThrow(/email/i);
+    expect(() => validateIdentity({ ...base, phone: "123" })).toThrow(/phone/i);
+  });
+});
+
+describe("accountUsable (suspend gate)", () => {
+  it("admits active accounts with a known role", () => {
+    expect(accountUsable({ active: true, role: "operations" })).toBe(true);
+  });
+
+  it("blocks suspended accounts and unknown roles", () => {
+    expect(accountUsable({ active: false, role: "operations" })).toBe(false);
+    expect(accountUsable({ active: true, role: "root" })).toBe(false);
   });
 });

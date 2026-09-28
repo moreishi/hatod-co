@@ -6,12 +6,20 @@ import type { Trip } from "@/lib/types";
 import type { Driver } from "@/lib/types";
 import { Badge, Btn, Card, Field, PageHeader, inputCls } from "../ui";
 import { AutoRefresh } from "../auto-refresh";
-import { assignTripAction, setTripStatusAction } from "./actions";
+import { assignTripAction, createTripAction, setTripStatusAction } from "./actions";
 
 const tone = (s: Trip["status"]) =>
   s === "COMPLETED" ? "ok" : s === "CANCELLED" ? "neutral" : s === "SEARCHING" ? "warn" : "info";
 
-export function OpsTripsBoard({ initial, drivers }: { initial: Trip[]; drivers: Driver[] }) {
+export function OpsTripsBoard({
+  initial,
+  drivers,
+  zones,
+}: {
+  initial: Trip[];
+  drivers: Driver[];
+  zones: { id: string; name: string }[];
+}) {
   const [q, setQ] = useState("");
   const open = drivers.filter((d) => d.status === "online" || d.status === "approved");
   const trips = initial.filter((t) => {
@@ -26,6 +34,43 @@ export function OpsTripsBoard({ initial, drivers }: { initial: Trip[]; drivers: 
     <div className="flex flex-col gap-4">
       <AutoRefresh />
       <PageHeader title="Live dispatch" badge={<Badge tone="warn">{searching} open</Badge>} />
+      <Card>
+        <h2 className="mb-2 font-semibold">Book a trip (phone ops, cash only)</h2>
+        <form
+          action={createTripAction}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          <Field label="Zone">
+            <select name="zoneId" required defaultValue={zones[0]?.id ?? ""} className={inputCls}>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Rider name">
+            <input name="riderName" placeholder="Walk-in rider" className={inputCls} />
+          </Field>
+          <Field label="Pickup">
+            <input name="pickup" required placeholder="SM Gensan" className={inputCls} />
+          </Field>
+          <Field label="Dropoff">
+            <input name="dropoff" required placeholder="Lagao Market" className={inputCls} />
+          </Field>
+          <Field label="Distance (m)">
+            <input name="distanceM" type="number" required min={1} defaultValue={4200} className={inputCls} />
+          </Field>
+          <Field label="Duration (s)">
+            <input name="durationS" type="number" required min={1} defaultValue={720} className={inputCls} />
+          </Field>
+          <div className="flex items-end">
+            <Btn tone="primary" type="submit">
+              Create trip
+            </Btn>
+          </div>
+        </form>
+      </Card>
       <Card>
         <Field label="Search id, rider, route, status">
           <input
