@@ -13,6 +13,8 @@ export interface AgencyApplication {
   contactPhone: string;
   status: AgencyStatus;
   createdAt: string;
+  /** Applicant login identity (joined where available). */
+  applicantEmail?: string | null;
 }
 
 export interface NewApplication {
