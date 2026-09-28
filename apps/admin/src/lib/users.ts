@@ -144,26 +144,6 @@ function rowToUser(row: Record<string, unknown>): TeamUser {
   };
 }
 
-const USER_COLS = `u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role AS legacy, u.created_at`;
-const USER_GROUP_PG = `GROUP BY u.id, u.name, u.email, u.phone, u.active, u.last_login_at, u.role, u.created_at`;
-
-const USER_LIST_PG = `SELECT ${USER_COLS},
-  COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
-  FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
-  ${USER_GROUP_PG} ORDER BY u.created_at ASC`;
-const USER_LIST_SQLITE = `SELECT ${USER_COLS},
-  group_concat(ur.role) AS roles
-  FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id
-  GROUP BY u.id ORDER BY u.created_at ASC`;
-
-export async function listUsers(): Promise<TeamUser[]> {
-  const rows = await queryDb<Record<string, unknown>>(
-    hasDb() ? USER_LIST_PG : USER_LIST_SQLITE,
-    [],
-  );
-  return rows.map(rowToUser);
-}
-
 export interface UserPage {
   rows: TeamUser[];
   total: number;
