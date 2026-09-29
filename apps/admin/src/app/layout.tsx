@@ -27,7 +27,7 @@ const NAV: { href: string; label: string; admin?: boolean }[] = [
   { href: "/drivers", label: "Drivers" },
   { href: "/zones", label: "Zones & Fares" },
   { href: "/trips", label: "Trips" },
-  { href: "/agency", label: "Agency" },
+  { href: "/agencies", label: "Agencies" },
   { href: "/wallets", label: "Wallets", admin: true },
   { href: "/users", label: "Users", admin: true },
 ];
@@ -39,6 +39,7 @@ const AGENCY_NAV: { href: string; label: string }[] = [
   { href: "/fleet/documents", label: "Docs inbox" },
   { href: "/fleet/earnings", label: "Earnings" },
   { href: "/fleet/wallet", label: "Wallet" },
+  { href: "/agencies/me", label: "Application" },
 ];
 
 const DRIVER_NAV: { href: string; label: string }[] = [

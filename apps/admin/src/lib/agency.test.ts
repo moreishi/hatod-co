@@ -18,20 +18,33 @@ function pending(): AgencyApplication {
 }
 
 describe("validateApplication", () => {
-  it("accepts a complete application", () => {
+  it("accepts a complete application with service area", () => {
     expect(
-      validateApplication({ businessName: " Gensan Fleet Co ", contactPhone: "09171110011" })
-        .businessName,
-    ).toBe("Gensan Fleet Co");
+      validateApplication({
+        businessName: " Gensan Fleet Co ",
+        contactPhone: "09171110011",
+        country: "Philippines",
+        province: "South Cotabato",
+        city: "General Santos",
+      }).city,
+    ).toBe("General Santos");
   });
 
-  it("rejects missing business or bad phone", () => {
+  it("rejects missing business, bad phone, or missing area", () => {
+    const base = {
+      businessName: "Fleet",
+      contactPhone: "09171110011",
+      country: "Philippines",
+      province: "South Cotabato",
+      city: "General Santos",
+    };
     expect(() =>
-      validateApplication({ businessName: "  ", contactPhone: "09171110011" }),
+      validateApplication({ ...base, businessName: "  " }),
     ).toThrow(/business/i);
     expect(() =>
-      validateApplication({ businessName: "Fleet", contactPhone: "123" }),
+      validateApplication({ ...base, contactPhone: "123" }),
     ).toThrow(/phone/i);
+    expect(() => validateApplication({ ...base, city: " " })).toThrow(/city/i);
   });
 });
 

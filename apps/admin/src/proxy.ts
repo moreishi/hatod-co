@@ -21,7 +21,11 @@ export default auth((req) => {
   ) as Role[];
   const inPortal = (base: string) => pathname === base || pathname.startsWith(`${base}/`);
   if (req.auth && roles.some((r) => isStaff(r))) return;
-  if (req.auth && roles.includes("agency") && (inPortal("/fleet") || pathname === "/no-access"))
+  if (
+    req.auth &&
+    roles.includes("agency") &&
+    (inPortal("/fleet") || inPortal("/agencies/me") || pathname === "/no-access")
+  )
     return;
   if (
     req.auth &&

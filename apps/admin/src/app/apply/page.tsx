@@ -1,5 +1,6 @@
 import { Btn, Card, Field, PageHeader, inputCls } from "../ui";
 import { signupAgencyAction } from "./actions";
+import { LocationFields } from "./location-fields";
 
 export default function ApplyPage() {
   return (
@@ -23,6 +24,7 @@ export default function ApplyPage() {
           <Field label="Contact phone (also your login)">
             <input name="contactPhone" required placeholder="09171110011" className={inputCls} />
           </Field>
+          <LocationFields />
           <Btn tone="primary" type="submit" className="py-2 text-sm">
             Submit application
           </Btn>

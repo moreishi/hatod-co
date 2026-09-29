@@ -1,31 +1,30 @@
 "use client";
 
-import { useState } from "react";
 import { canGoOnline } from "@/lib/compliance";
-import { filterDrivers } from "@/lib/driverRules";
 import type { Driver } from "@/lib/types";
-import { Badge, Btn, Card, Field, PageHeader, inputCls } from "../ui";
+import { Badge, Btn, Card } from "../ui";
 import { setOpsDriverStatusAction } from "./actions";
 
 const statusTone = (s: Driver["status"]) =>
   s === "online" ? "ok" : s === "approved" ? "info" : s === "pending" ? "warn" : "neutral";
 
-export function OpsDriverTable({ initial }: { initial: Driver[] }) {
-  const [q, setQ] = useState("");
-  const drivers = filterDrivers(initial, q);
+export function OpsDriverTable({
+  initial,
+  prev,
+  next,
+  safe,
+  pages,
+  total,
+}: {
+  initial: Driver[];
+  prev: string;
+  next: string;
+  safe: number;
+  pages: number;
+  total: number;
+}) {
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Fleet — approval & status" />
-      <Card>
-        <Field label="Search name, phone, plate, status">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Dela Cruz, MC-…, online…"
-            className={inputCls}
-          />
-        </Field>
-      </Card>
       <Card flush>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
@@ -40,7 +39,14 @@ export function OpsDriverTable({ initial }: { initial: Driver[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {drivers.map((d) => (
+              {initial.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-zinc-500">
+                    No drivers match.
+                  </td>
+                </tr>
+              )}
+              {initial.map((d) => (
                 <tr key={d.id} className="hover:bg-zinc-50/60">
                   <td className="px-4 py-2">
                     <a href={`/fleet/drivers/${d.id}`} className="font-medium underline">
@@ -79,6 +85,25 @@ export function OpsDriverTable({ initial }: { initial: Driver[] }) {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2 text-sm">
+          <a
+            href={`/drivers?${prev}`}
+            aria-disabled={safe <= 1}
+            className={safe <= 1 ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            ← Prev
+          </a>
+          <span className="text-xs text-zinc-500 tabular-nums">
+            Page {safe} of {pages} · {total} total
+          </span>
+          <a
+            href={`/drivers?${next}`}
+            aria-disabled={safe >= pages}
+            className={safe >= pages ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            Next →
+          </a>
         </div>
       </Card>
     </div>

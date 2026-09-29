@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { filterTrips } from "@/lib/tripflow";
 import type { Trip } from "@/lib/types";
 import type { Driver } from "@/lib/types";
 import { Badge, Btn, Card, Field, PageHeader, inputCls } from "../ui";
@@ -15,25 +13,34 @@ export function OpsTripsBoard({
   initial,
   drivers,
   zones,
+  q,
+  status,
+  prev,
+  next,
+  safe,
+  pages,
+  total,
 }: {
   initial: Trip[];
   drivers: Driver[];
   zones: { id: string; name: string }[];
+  q: string;
+  status: string;
+  prev: string;
+  next: string;
+  safe: number;
+  pages: number;
+  total: number;
 }) {
-  const [q, setQ] = useState("");
   const open = drivers.filter((d) => d.status === "online" || d.status === "approved");
-  const trips = initial.filter((t) => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return true;
-    return `${t.id} ${t.riderName} ${t.pickup} ${t.dropoff} ${t.status}`
-      .toLowerCase()
-      .includes(needle);
-  });
-  const searching = filterTrips(trips, "active").filter((t) => t.status === "SEARCHING").length;
+  const searching = initial.filter((t) => t.status === "SEARCHING").length;
   return (
     <div className="flex flex-col gap-4">
       <AutoRefresh />
-      <PageHeader title="Live dispatch" badge={<Badge tone="warn">{searching} open</Badge>} />
+      <PageHeader
+        title="Live dispatch"
+        badge={<Badge tone="warn">{searching} open · page {safe}/{pages}</Badge>}
+      />
       <Card>
         <h2 className="mb-2 font-semibold">Book a trip (phone ops, cash only)</h2>
         <form
@@ -72,14 +79,32 @@ export function OpsTripsBoard({
         </form>
       </Card>
       <Card>
-        <Field label="Search id, rider, route, status">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Rider, SM Gensan, SEARCHING…"
-            className={inputCls}
-          />
-        </Field>
+        <form method="GET" className="flex flex-wrap items-end gap-2">
+          <div className="min-w-40 flex-1">
+            <Field label="Search id, rider, route">
+              <input
+                name="q"
+                defaultValue={q}
+                placeholder="Rider, SM Gensan…"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Status">
+            <select name="status" defaultValue={status} className={inputCls}>
+              <option value="">All</option>
+              {["SEARCHING", "ACCEPTED", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map(
+                (s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ),
+              )}
+            </select>
+          </Field>
+          <input type="hidden" name="page" value="1" />
+          <Btn type="submit">Search</Btn>
+        </form>
       </Card>
       <Card flush>
         <div className="overflow-x-auto">
@@ -94,14 +119,14 @@ export function OpsTripsBoard({
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {trips.length === 0 && (
+              {initial.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-sm text-zinc-500">
                     No trips match.
                   </td>
                 </tr>
               )}
-              {trips.map((t) => (
+              {initial.map((t) => (
                 <tr key={t.id} className="hover:bg-zinc-50/60">
                   <td className="px-4 py-2">
                     <p className="font-medium tabular-nums">{t.id}</p>
@@ -150,6 +175,25 @@ export function OpsTripsBoard({
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-100 px-4 py-2 text-sm">
+          <a
+            href={`/trips?${prev}`}
+            aria-disabled={safe <= 1}
+            className={safe <= 1 ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            ← Prev
+          </a>
+          <span className="text-xs text-zinc-500 tabular-nums">
+            Page {safe} of {pages} · {total} total
+          </span>
+          <a
+            href={`/trips?${next}`}
+            aria-disabled={safe >= pages}
+            className={safe >= pages ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            Next →
+          </a>
         </div>
       </Card>
     </div>

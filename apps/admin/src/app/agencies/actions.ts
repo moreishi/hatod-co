@@ -18,11 +18,11 @@ async function reviewer() {
 export async function decideApplicationAction(id: string, decision: "approve" | "reject") {
   const { id: reviewerId } = await reviewer();
   await decideApplication(id, decision, reviewerId);
-  revalidatePath("/agency");
+  revalidatePath("/agencies");
 }
 
 export async function completeOnboardingAction(applicationId: string, step: string) {
   const { id: reviewerId } = await reviewer();
   await completeOnboardingStep(applicationId, step, reviewerId);
-  revalidatePath("/agency");
+  revalidatePath("/agencies");
 }

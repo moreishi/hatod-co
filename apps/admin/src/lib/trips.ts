@@ -1,4 +1,5 @@
 import { insertQuery } from "./repo";
+import { paginate } from "./users";
 import { queryDb } from "./db";
 import { transitionTrip } from "./tripflow";
 import type { Trip, TripStatus } from "./types";
@@ -36,6 +37,43 @@ export async function listAllTrips(limit = 100): Promise<Trip[]> {
     [limit],
   );
   return rows.map(rowToTrip);
+}
+
+export interface TripPage {
+  rows: Trip[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+const TRIP_PER_PAGE = 15;
+
+/** Dispatch board: DB search + status filter + pagination (one value per slot). */
+export async function listTripsPaged(
+  q = "",
+  status = "",
+  page = 1,
+): Promise<TripPage> {
+  const needle = q.trim();
+  const like = `%${needle}%`;
+  const cleanStatus =
+    ["SEARCHING", "ACCEPTED", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(status)
+      ? status
+      : "";
+  const where = `WHERE ($1 = '' OR id LIKE $2 OR rider_name LIKE $3 OR pickup LIKE $4 OR dropoff LIKE $5 OR status LIKE $6)
+    AND ($7 = '' OR status = $8)`;
+  const params = [needle, like, like, like, like, like, cleanStatus, cleanStatus];
+  const totalRows = await queryDb<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM trips ${where}`,
+    params as unknown[],
+  );
+  const total = Number(totalRows[0]?.n ?? 0);
+  const { page: safe, pages, offset, limit } = paginate(total, page, TRIP_PER_PAGE);
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT * FROM trips ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+    params as unknown[],
+  );
+  return { rows: rows.map(rowToTrip), total, page: safe, pages };
 }
 
 /** Driver's current ride: newest non-terminal trip. */

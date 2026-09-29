@@ -10,6 +10,9 @@ export async function signupAgencyAction(formData: FormData) {
     email: String(formData.get("email") ?? ""),
     businessName: String(formData.get("businessName") ?? ""),
     contactPhone: String(formData.get("contactPhone") ?? ""),
+    country: String(formData.get("country") ?? ""),
+    province: String(formData.get("province") ?? ""),
+    city: String(formData.get("city") ?? ""),
   });
   redirect(`/apply/done?id=${applicationId}`);
 }
