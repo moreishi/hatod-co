@@ -8,6 +8,7 @@ import 'features/auth/domain/role_routing.dart';
 import 'features/auth/domain/session.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/session_scope.dart';
+import 'features/driver/data/driver_repository.dart';
 import 'features/driver/presentation/driver_home_screen.dart';
 import 'features/rider/presentation/rider_home_screen.dart';
 
@@ -60,7 +61,10 @@ class _HailingAppState extends State<HailingApp> {
             }
             final session = snapshot.data!;
             return homeFor(session) == HomeDestination.driverHome
-                ? DriverHomeScreen(userId: session.sub)
+                ? DriverHomeScreen(
+                    userId: session.sub,
+                    repository: DriverRepository(api: _auth.api),
+                  )
                 : RiderHomeScreen(userId: session.sub);
           },
         ),

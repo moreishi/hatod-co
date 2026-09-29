@@ -1,0 +1,47 @@
+import '../../../core/network/api_client.dart';
+import '../../booking/domain/ride.dart';
+
+/// Driver operations against the real API (mobile spec §39–44).
+class DriverRepository {
+  final ApiClient api;
+
+  DriverRepository({required this.api});
+
+  Future<bool> setOnline(bool online) async {
+    final body = await api.post('/api/drivers/me/online', {'online': online})
+        as Map<String, dynamic>;
+    return body['isOnline'] as bool? ?? online;
+  }
+
+  Future<void> ping(double lat, double lng) async {
+    await api.post('/api/drivers/me/location', {'lat': lat, 'lng': lng});
+  }
+
+  Future<List<Ride>> myRides() async {
+    final body = await api.get('/api/rides/mine') as Map<String, dynamic>;
+    final rides = body['asDriver'] as List;
+    return rides.map((r) => Ride.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  Future<Ride> acceptOffer(String rideId) async {
+    final body = await api.post('/api/drivers/me/offers/$rideId/accept', {})
+        as Map<String, dynamic>;
+    return Ride.fromJson(body);
+  }
+
+  Future<void> declineOffer(String rideId) async {
+    await api.post('/api/drivers/me/offers/$rideId/decline', {});
+  }
+
+  Future<Ride> acceptAssigned(String rideId) async {
+    final body = await api.post('/api/rides/$rideId/accept', {})
+        as Map<String, dynamic>;
+    return Ride.fromJson(body);
+  }
+
+  Future<Ride> transition(String rideId, String to) async {
+    final body = await api.post('/api/rides/$rideId/transition', {'to': to})
+        as Map<String, dynamic>;
+    return Ride.fromJson(body);
+  }
+}
