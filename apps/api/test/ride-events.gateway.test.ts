@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { RideEventsGateway } from "../src/realtime/ride-events.gateway.js";
 
-function gatewayWith(overrides: { prisma?: object } = {}) {
+function gatewayWith(overrides: { prisma?: object; messaging?: object } = {}) {
   const emit = vi.fn();
   const to = vi.fn().mockReturnValue({ emit });
   const server = { to };
@@ -14,7 +14,18 @@ function gatewayWith(overrides: { prisma?: object } = {}) {
     ride: { findUnique: vi.fn() },
     ...overrides.prisma,
   };
-  const gateway = new RideEventsGateway(tokens as never, prisma as never);
+  const messaging = {
+    sendMessage: vi.fn().mockResolvedValue({ id: "m-1" }),
+    markDelivered: vi.fn().mockResolvedValue({ delivered: 1 }),
+    markRead: vi.fn().mockResolvedValue({ read: 1 }),
+    ...overrides.messaging,
+  };
+  const moduleRef = { get: vi.fn().mockReturnValue(messaging) };
+  const gateway = new RideEventsGateway(
+    tokens as never,
+    prisma as never,
+    moduleRef as never,
+  );
   (gateway as unknown as { server: unknown }).server = server;
   const client = (extra: object = {}) => {
     const socket = {
@@ -130,5 +141,36 @@ describe("RideEventsGateway auth (messaging spec §10)", () => {
       gateway.handleConversationJoin(socket, "c-1"),
     ).resolves.toEqual({ ok: false });
     expect(gateway.isViewing("u-1", "c-1")).toBe(false);
+  });
+
+  it("sends chat over the socket with server-resolved identity", async () => {
+    const { gateway, client } = gatewayWith();
+    const authed = client();
+    gateway.handleConnection(authed);
+    await expect(
+      gateway.handleMessageSend(authed, {
+        conversationId: "c-1",
+        content: "hi",
+      }),
+    ).resolves.toMatchObject({ ok: true, messageId: "m-1" });
+    const anon = client({ data: {} });
+    await expect(
+      gateway.handleMessageSend(anon, {
+        conversationId: "c-1",
+        content: "hi",
+      }),
+    ).resolves.toMatchObject({ ok: false });
+  });
+
+  it("syncs receipts over the socket after reconnect", async () => {
+    const { gateway, client } = gatewayWith();
+    const socket = client();
+    gateway.handleConnection(socket);
+    await expect(
+      gateway.handleMessageDelivered(socket, "c-1"),
+    ).resolves.toMatchObject({ ok: true, delivered: 1 });
+    await expect(
+      gateway.handleMessageRead(socket, "c-1"),
+    ).resolves.toMatchObject({ ok: true, read: 1 });
   });
 });

@@ -29,6 +29,11 @@ export abstract class Agent {
     this.log({ at: new Date().toISOString(), agent: this.name, event, detail });
   }
 
+  /** Public event marker for scenario orchestration. */
+  note(event: string, detail?: string) {
+    this.emit(event, detail);
+  }
+
   async login() {
     this.token = await this.api.login(this.phone);
     this.emit("login");

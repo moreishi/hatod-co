@@ -21,7 +21,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @hailing/api exec prisma generate
       - run: pnpm --filter @hailing/worker exec prisma generate --schema ../api/prisma/schema.prisma
-      - run: pnpm exec turbo run build test typecheck lint --force
+      - run: pnpm exec turbo run build test typecheck lint --force --filter='!@hailing/e2e'
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hailing/api exec prisma generate
+      - run: pnpm exec turbo run build --force
+      - run: pnpm --filter @hailing/e2e exec playwright install --with-deps chromium
+      - run: pnpm exec turbo run test --filter=@hailing/e2e --force
       - run: |
           cp apps/api/.env.example apps/api/.env
           pnpm --filter @hailing/api exec prisma migrate deploy

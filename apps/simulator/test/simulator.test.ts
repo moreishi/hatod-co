@@ -34,7 +34,9 @@ describe("simulator config (plan §21)", () => {
   it("registers the Phase 1 scenarios", () => {
     expect(Object.keys(SCENARIOS).sort()).toEqual([
       "cancel_before_accept",
+      "chat_reconnect",
       "driver_reject",
+      "message_retry",
       "normal_ride",
     ]);
   });
