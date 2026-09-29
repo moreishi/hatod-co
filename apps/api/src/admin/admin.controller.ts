@@ -67,6 +67,12 @@ export class AdminController {
   financeSummary() {
     return this.admin.financeSummary();
   }
+
+  @Get("conversations/:id")
+  @Roles("ADMIN:*")
+  inspectConversation(@Req() req: AuthedRequest, @Param("id") id: string) {
+    return this.admin.inspectConversation(id, req.user!.sub);
+  }
 }
 
 export type { AdminRole };

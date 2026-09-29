@@ -117,4 +117,32 @@ describe("AdminService invitations (spec §16)", () => {
       mk(fresh).accept("t", { phone: "09170000001", password: "s3cret!!" }),
     ).rejects.toThrow("already registered");
   });
+
+  it("inspects conversations read-only with an audit row and no content leak", async () => {
+    const auditCreate = vi.fn().mockResolvedValue({});
+    const svc = serviceWith({
+      conversation: {
+        findUniqueOrThrow: vi
+          .fn()
+          .mockResolvedValue({ id: "c-1", ride: { id: "ride-1" } }),
+      },
+      message: { findMany: vi.fn().mockResolvedValue([{ id: "m-1" }]) },
+      auditLog: { create: auditCreate },
+    });
+    const result = (await svc.inspectConversation("c-1", "admin-1")) as {
+      conversation: object;
+      messages: object[];
+    };
+    expect(result.messages).toHaveLength(1);
+    expect(auditCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "conversation.view",
+          entityId: "c-1",
+        }),
+      }),
+    );
+    const logged = JSON.stringify(auditCreate.mock.calls[0]);
+    expect(logged).not.toContain("hello");
+  });
 });

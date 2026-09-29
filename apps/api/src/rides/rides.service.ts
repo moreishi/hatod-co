@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { quoteFare } from "./fare.js";
 import { RideTransitionGuard } from "./ride-transition.guard.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
+import { MessagingService } from "../messaging/messaging.service.js";
 import { RideEventsGateway } from "../realtime/ride-events.gateway.js";
 import { pricing } from "@hailing/data";
 
@@ -34,6 +35,7 @@ export class RidesService {
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
     @Inject(RideEventsGateway) private readonly realtime: RideEventsGateway,
+    @Inject(MessagingService) private readonly messaging: MessagingService,
   ) {}
 
   /** Rider requests a ride → REQUESTED with an upfront quoted fare. */
@@ -67,7 +69,7 @@ export class RidesService {
       where: { id: driverId },
       include: {
         assignments: { where: { isActive: true } },
-        user: { select: { displayName: true } },
+        user: { select: { id: true, displayName: true } },
       },
     });
     if (
@@ -98,6 +100,12 @@ export class RidesService {
     ]);
     await this.notifyRider(rideId, "RIDE_ASSIGNED");
     await this.broadcastRide(rideId, RideStatus.ASSIGNED);
+    await this.messaging.ensureConversation(
+      rideId,
+      ride.riderId,
+      driver.user.id,
+    );
+    await this.messaging.postSystemMessage(rideId, RideStatus.ASSIGNED);
     return updated;
   }
 
@@ -129,6 +137,10 @@ export class RidesService {
       }),
     ]);
     await this.broadcastRide(rideId, to);
+    await this.messaging.postSystemMessage(rideId, to);
+    if (to === RideStatus.CANCELLED) {
+      await this.messaging.closeConversation(rideId);
+    }
     return moved;
   }
 
@@ -193,6 +205,8 @@ export class RidesService {
     ]);
     await this.notifyRider(rideId, "RIDE_COMPLETED");
     await this.broadcastRide(rideId, RideStatus.COMPLETED);
+    await this.messaging.postSystemMessage(rideId, RideStatus.COMPLETED);
+    await this.messaging.closeConversation(rideId);
     return completed;
   }
 

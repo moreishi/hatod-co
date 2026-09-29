@@ -43,6 +43,7 @@ export const Templates = {
     "Trip complete. Fare {{fare}} paid via {{method}}. Thank you for riding Hailing!",
   DRIVER_APPROVED:
     "Your driver application was approved. Complete your profile to go online.",
+  NEW_MESSAGE: "New message from your {{sender}}.",
 } as const;
 
 export type TemplateName = keyof typeof Templates;
