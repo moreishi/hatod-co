@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RideStatus } from "@hailing/constants";
 import { apiAsUser } from "@/lib/api.js";
+import { PAGE_SIZE, Pager } from "../pager.js";
 
 interface RideRow {
   id: string;
@@ -15,12 +16,17 @@ interface RideRow {
 export default async function AdminRidesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
-  const { status } = await searchParams;
-  const rides = await apiAsUser<RideRow[]>(
-    `/api/admin/rides${status ? `?status=${status}` : ""}`,
-  );
+  const { status, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const skip = (page - 1) * PAGE_SIZE;
+  const query = new URLSearchParams();
+  if (status) query.set("status", status);
+  query.set("take", String(PAGE_SIZE));
+  query.set("skip", String(skip));
+  const rides = await apiAsUser<RideRow[]>(`/api/admin/rides?${query}`);
+  const base = `/admin/rides${status ? `?status=${status}` : ""}`;
   return (
     <main className="mx-auto max-w-6xl px-6 py-16">
       <h1 className="text-3xl font-bold">Rides</h1>
@@ -72,6 +78,7 @@ export default async function AdminRidesPage({
           <li className="px-6 py-4 text-sm text-slate-500">No rides.</li>
         )}
       </ul>
+      <Pager base={base} page={page} fullPage={rides.length === PAGE_SIZE} />
     </main>
   );
 }

@@ -7,6 +7,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { AdminRole, DriverStatus } from "@hailing/constants";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { DEFAULT_TAKE, type Page } from "../common/paging.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
 
 export interface CreateVehicleDto {
@@ -37,6 +38,7 @@ export class AgenciesService {
     agencyId: string,
     statuses: string[] | undefined,
     requester: Requester,
+    page: Page = { take: DEFAULT_TAKE, skip: 0 },
   ) {
     this.requireAgency(agencyId, requester);
     return this.prisma.ride.findMany({
@@ -50,11 +52,16 @@ export class AgenciesService {
         driver: { include: { user: { select: { displayName: true } } } },
       },
       orderBy: { requestedAt: "desc" },
-      take: 100,
+      take: page.take,
+      skip: page.skip,
     });
   }
 
-  async listDrivers(agencyId: string, requester: Requester) {
+  async listDrivers(
+    agencyId: string,
+    requester: Requester,
+    page: Page = { take: DEFAULT_TAKE, skip: 0 },
+  ) {
     this.requireAgency(agencyId, requester);
     return this.prisma.driver.findMany({
       where: { agencyId },
@@ -63,6 +70,8 @@ export class AgenciesService {
         assignments: { where: { isActive: true }, include: { vehicle: true } },
       },
       orderBy: { createdAt: "desc" },
+      take: page.take,
+      skip: page.skip,
     });
   }
 

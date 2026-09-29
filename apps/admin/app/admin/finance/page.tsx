@@ -1,4 +1,5 @@
 import { apiAsUser } from "@/lib/api.js";
+import { PAGE_SIZE, Pager } from "../pager.js";
 
 interface TxnRow {
   id: string;
@@ -14,10 +15,19 @@ interface Summary {
   wallets: number;
 }
 
-export default async function AdminFinancePage() {
+export default async function AdminFinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number(pageParam) || 1);
+  const skip = (page - 1) * PAGE_SIZE;
   const [summary, txns] = await Promise.all([
     apiAsUser<Summary>("/api/admin/finance/summary"),
-    apiAsUser<TxnRow[]>("/api/admin/transactions"),
+    apiAsUser<TxnRow[]>(
+      `/api/admin/transactions?take=${PAGE_SIZE}&skip=${skip}`,
+    ),
   ]);
   return (
     <main className="mx-auto max-w-6xl px-6 py-16">
@@ -65,6 +75,11 @@ export default async function AdminFinancePage() {
           </li>
         ))}
       </ul>
+      <Pager
+        base="/admin/finance"
+        page={page}
+        fullPage={txns.length === PAGE_SIZE}
+      />
     </main>
   );
 }

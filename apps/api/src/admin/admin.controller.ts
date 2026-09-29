@@ -12,6 +12,7 @@ import {
 import type { AdminRole } from "@hailing/constants";
 import { Roles, Public } from "../auth/roles.decorator.js";
 import { RolesGuard } from "../auth/roles.guard.js";
+import { parsePage } from "../common/paging.js";
 import { AdminService } from "./admin.service.js";
 import type { AcceptInviteDto, InviteAdminDto } from "./admin.service.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
@@ -52,14 +53,28 @@ export class AdminController {
 
   @Get("rides")
   @Roles("ADMIN:*")
-  rides(@Query("status") status?: string) {
-    return this.admin.listRides(status);
+  rides(
+    @Query("status") status?: string,
+    @Query("take") take?: string,
+    @Query("skip") skip?: string,
+  ) {
+    return this.admin.listRides(status, parsePage({ take, skip }));
   }
 
   @Get("transactions")
   @Roles("ADMIN:*")
-  transactions(@Query("type") type?: string) {
-    return this.admin.listTransactions(type);
+  transactions(
+    @Query("type") type?: string,
+    @Query("take") take?: string,
+    @Query("skip") skip?: string,
+  ) {
+    return this.admin.listTransactions(type, parsePage({ take, skip }));
+  }
+
+  @Get("audit-logs")
+  @Roles("ADMIN:*")
+  auditLogs(@Query("take") take?: string, @Query("skip") skip?: string) {
+    return this.admin.listAuditLogs(parsePage({ take, skip }));
   }
 
   @Get("finance/summary")

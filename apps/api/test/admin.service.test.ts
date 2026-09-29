@@ -62,8 +62,9 @@ describe("AdminService invitations (spec §16)", () => {
   });
 
   it("lists rides, transactions, and a finance summary", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "ride-1" }]);
     const svc = serviceWith({
-      ride: { findMany: vi.fn().mockResolvedValue([{ id: "ride-1" }]) },
+      ride: { findMany },
       ledgerTransaction: {
         findMany: vi.fn().mockResolvedValue([{ id: "tx-1" }]),
         groupBy: vi.fn().mockResolvedValue([
@@ -76,7 +77,12 @@ describe("AdminService invitations (spec §16)", () => {
       },
       wallet: { count: vi.fn().mockResolvedValue(23) },
     });
-    expect(await svc.listRides("COMPLETED")).toHaveLength(1);
+    expect(
+      await svc.listRides("COMPLETED", { take: 10, skip: 5 }),
+    ).toHaveLength(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 10, skip: 5 }),
+    );
     expect(await svc.listTransactions(undefined)).toHaveLength(1);
     expect(await svc.financeSummary()).toMatchObject({ wallets: 23 });
   });
