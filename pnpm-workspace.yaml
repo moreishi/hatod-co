@@ -4,6 +4,7 @@ packages:
   - "apps/admin"
   - "apps/api"
   - "apps/agency"
+  - "apps/e2e"
   - "apps/worker"
   - "packages/*"
 allowBuilds:

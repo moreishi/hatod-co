@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className="text-sm text-slate-600 hover:text-brand-700"
               >
                 {item.label}

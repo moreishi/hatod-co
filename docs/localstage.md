@@ -6,6 +6,7 @@ SQLite + direct dev servers, no external services:
 
 ```powershell
 pnpm install
+pnpm --filter @hailing/api exec prisma generate   # after every schema change
 pnpm --filter @hailing/api exec prisma migrate dev   # creates apps/api/prisma/dev.db
 pnpm --filter @hailing/api run prisma:seed            # 45 users, 130 rides, 236 txns
 pnpm --filter @hailing/api run prisma:validate        # spec rules 26-30

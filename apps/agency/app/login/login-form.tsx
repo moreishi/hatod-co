@@ -49,6 +49,8 @@ export function LoginForm() {
         const body = (await res.json()) as { message?: string };
         throw new Error(body.message ?? "invalid code");
       }
+      // Clear the prefetch cache so post-login navigation fetches fresh.
+      router.refresh();
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "verify failed");
