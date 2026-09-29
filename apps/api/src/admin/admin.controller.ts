@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -46,6 +47,24 @@ export class AdminController {
   @Roles("ADMIN:*")
   users() {
     return this.admin.listUsers();
+  }
+
+  @Get("rides")
+  @Roles("ADMIN:*")
+  rides(@Query("status") status?: string) {
+    return this.admin.listRides(status);
+  }
+
+  @Get("transactions")
+  @Roles("ADMIN:*")
+  transactions(@Query("type") type?: string) {
+    return this.admin.listTransactions(type);
+  }
+
+  @Get("finance/summary")
+  @Roles("ADMIN:*")
+  financeSummary() {
+    return this.admin.financeSummary();
   }
 }
 

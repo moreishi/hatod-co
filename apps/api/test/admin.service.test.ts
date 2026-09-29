@@ -61,6 +61,26 @@ describe("AdminService invitations (spec §16)", () => {
     expect(res).toMatchObject({ userId: "u-9", role: "OPS" });
   });
 
+  it("lists rides, transactions, and a finance summary", async () => {
+    const svc = serviceWith({
+      ride: { findMany: vi.fn().mockResolvedValue([{ id: "ride-1" }]) },
+      ledgerTransaction: {
+        findMany: vi.fn().mockResolvedValue([{ id: "tx-1" }]),
+        groupBy: vi.fn().mockResolvedValue([
+          {
+            type: "RIDE_EARNING",
+            _sum: { amountCentavos: 100 },
+            _count: { type: 2 },
+          },
+        ]),
+      },
+      wallet: { count: vi.fn().mockResolvedValue(23) },
+    });
+    expect(await svc.listRides("COMPLETED")).toHaveLength(1);
+    expect(await svc.listTransactions(undefined)).toHaveLength(1);
+    expect(await svc.financeSummary()).toMatchObject({ wallets: 23 });
+  });
+
   it("rejects used, expired, weak, and duplicate accepts", async () => {
     const mk = (inv: object) =>
       serviceWith({

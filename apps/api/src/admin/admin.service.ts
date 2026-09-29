@@ -92,4 +92,43 @@ export class AdminService {
       orderBy: { createdAt: "desc" },
     });
   }
+
+  /** Platform-wide ride oversight for ops/finance/support. */
+  async listRides(status?: string) {
+    return this.prisma.ride.findMany({
+      where: status ? { status } : undefined,
+      include: {
+        driver: { include: { user: { select: { displayName: true } } } },
+      },
+      orderBy: { requestedAt: "desc" },
+      take: 100,
+    });
+  }
+
+  /** Ledger oversight: every centavo movement, newest first. */
+  async listTransactions(type?: string) {
+    return this.prisma.ledgerTransaction.findMany({
+      where: type ? { type } : undefined,
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }
+
+  /** Finance summary: totals per transaction type + wallet count. */
+  async financeSummary() {
+    const groups = await this.prisma.ledgerTransaction.groupBy({
+      by: ["type"],
+      _sum: { amountCentavos: true },
+      _count: { type: true },
+    });
+    const wallets = await this.prisma.wallet.count();
+    return {
+      byType: groups.map((g) => ({
+        type: g.type,
+        totalCentavos: g._sum.amountCentavos ?? 0,
+        count: g._count.type,
+      })),
+      wallets,
+    };
+  }
 }
