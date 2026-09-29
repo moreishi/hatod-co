@@ -11,6 +11,7 @@ event-driven internals; the full blueprint is `HAILING_PROJECT_SPECIFICATION.md`
 | Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                                        |
 | Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                                       |
 | Rider portal  | Next.js 16 LTS + Tailwind (`apps/rider`, `:3004`)                                                        |
+| Mobile        | Flutter rider + driver app (`apps/mobile`, SDK on PATH)                                                  |
 | Driver portal | Next.js 16 LTS + Tailwind (`apps/driver`, `:3005`)                                                       |
 | Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                                      |
 | Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phases 1-2)                                  |

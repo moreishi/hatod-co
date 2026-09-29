@@ -1,0 +1,11 @@
+{
+  "name": "@hailing/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Flutter rider + driver app (turbo wiring; Flutter SDK required)",
+  "scripts": {
+    "test": "flutter test",
+    "typecheck": "flutter analyze --no-pub",
+    "lint": "flutter analyze --no-pub"
+  }
+}
