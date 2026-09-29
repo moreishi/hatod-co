@@ -307,4 +307,34 @@ describe("RidesService", () => {
       svc.transitionRide("ride-1", RideStatus.ASSIGNED, "actor"),
     ).rejects.toThrow("Illegal ride transition");
   });
+
+  it("quotes fares from real coordinates", async () => {
+    const svc = serviceWith({});
+    const quote = await svc.quoteFare(
+      { lat: 10.3181, lng: 123.9054 },
+      { lat: 10.3111, lng: 123.9185 },
+      "SEDAN",
+    );
+    expect(quote.provider).toBe("haversine");
+    expect(quote.fareCentavos).toBeGreaterThanOrEqual(6000);
+    expect(quote.distanceKm).toBeGreaterThan(0);
+  });
+
+  it("lists my rides as rider and as driver", async () => {
+    const svc = serviceWith({
+      driver: { findUnique: vi.fn().mockResolvedValue({ id: "d-1" }) },
+      ride: {
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([{ id: "r-rider" }])
+          .mockResolvedValueOnce([{ id: "r-driver" }]),
+      },
+    });
+    const mine = (await svc.myRides("u-1")) as {
+      asRider: { id: string }[];
+      asDriver: { id: string }[];
+    };
+    expect(mine.asRider.map((r) => r.id)).toEqual(["r-rider"]);
+    expect(mine.asDriver.map((r) => r.id)).toEqual(["r-driver"]);
+  });
 });

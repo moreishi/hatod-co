@@ -7,6 +7,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { AdminRole, DriverStatus } from "@hailing/constants";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { LocationService } from "../location/location.service.js";
 import { DEFAULT_TAKE, type Page } from "../common/paging.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
 
@@ -25,7 +26,10 @@ export interface CreateVehicleDto {
  */
 @Injectable()
 export class AgenciesService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(LocationService) private readonly location: LocationService,
+  ) {}
 
   /** Agencies the requester belongs to (admins see all). */
   async myAgencies(requester: Requester) {
@@ -143,6 +147,17 @@ export class AgenciesService {
     );
     const results = await this.prisma.$transaction(ops);
     return results[results.length - 1];
+  }
+
+  /** Online drivers near a point, closest first (routing spec §12). */
+  async nearbyDrivers(
+    agencyId: string,
+    lat: number,
+    lng: number,
+    requester: Requester,
+  ) {
+    this.requireAgency(agencyId, requester);
+    return this.location.nearby(agencyId, lat, lng);
   }
 
   /** Fleet registry for the agency. */

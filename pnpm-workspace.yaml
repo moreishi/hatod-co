@@ -7,6 +7,8 @@ packages:
   - "apps/e2e"
   - "apps/simulator"
   - "apps/worker"
+  - "apps/rider"
+  - "apps/driver"
   - "packages/*"
 allowBuilds:
   "@prisma/client": true

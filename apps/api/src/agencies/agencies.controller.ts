@@ -79,6 +79,22 @@ export class AgenciesController {
     return this.agencies.listVehicles(id, requesterOf(req));
   }
 
+  @Get(":id/drivers/nearby")
+  @Roles("RIDER")
+  nearby(
+    @Req() req: AuthedRequest,
+    @Param("id") id: string,
+    @Query("lat") lat?: string,
+    @Query("lng") lng?: string,
+  ) {
+    return this.agencies.nearbyDrivers(
+      id,
+      Number(lat),
+      Number(lng),
+      requesterOf(req),
+    );
+  }
+
   @Get(":id/documents")
   @Roles("RIDER")
   documents(

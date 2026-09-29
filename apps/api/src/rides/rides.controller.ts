@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { RideStatus } from "@hailing/constants";
+import type { VehicleType } from "@hailing/constants";
 import { Roles } from "../auth/roles.decorator.js";
 import { RolesGuard } from "../auth/roles.guard.js";
 import { RidesService } from "./rides.service.js";
@@ -33,6 +34,19 @@ export class RidesController {
   @Roles("RIDER")
   request(@Req() req: AuthedRequest, @Body() dto: RequestRideDto) {
     return this.rides.requestRide(req.user!.sub, dto);
+  }
+
+  @Post("quote")
+  @Roles("RIDER")
+  quote(
+    @Body()
+    dto: {
+      origin: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+      vehicleType: VehicleType;
+    },
+  ) {
+    return this.rides.quoteFare(dto.origin, dto.destination, dto.vehicleType);
   }
 
   @Post(":id/assign")
@@ -76,6 +90,12 @@ export class RidesController {
   @Roles("RIDER")
   list(@Query("status") status?: RideStatus) {
     return this.rides.listRides(status);
+  }
+
+  @Get("mine")
+  @Roles("RIDER")
+  mine(@Req() req: AuthedRequest) {
+    return this.rides.myRides(req.user!.sub);
   }
 
   @Get(":id")
