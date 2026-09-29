@@ -47,6 +47,12 @@ export class DriversController {
     return this.matching.offersFor(req.user!.sub);
   }
 
+  @Get("me/earnings")
+  @Roles("DRIVER:*")
+  earnings(@Req() req: AuthedRequest) {
+    return this.rides.driverEarnings(req.user!.sub);
+  }
+
   @Post("me/offers/:rideId/accept")
   @Roles("DRIVER:*")
   acceptOffer(@Req() req: AuthedRequest, @Param("rideId") rideId: string) {

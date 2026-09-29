@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../auth/presentation/session_scope.dart';
 import '../../booking/data/booking_repository.dart';
 import '../../booking/domain/ride.dart';
+import '../../messaging/data/messaging_repository.dart';
+import 'trips_screen.dart';
 
 /// Rider home: fare quote → book → active ride card (mobile spec §20, §28).
 class RiderHomeScreen extends StatefulWidget {
@@ -154,6 +156,19 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                 subtitle: Text('${_active!.status}${_active!.driverName != null ? ' · ${_active!.driverName}' : ''}'),
               ),
             ),
+          TextButton(
+            onPressed: () {
+              final api = SessionScope.of(context).api;
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => RiderTripsScreen(
+                  myId: widget.userId,
+                  booking: BookingRepository(api: api),
+                  messaging: MessagingRepository(api: api),
+                ),
+              ));
+            },
+            child: const Text('View my trips'),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: Colors.red)),
