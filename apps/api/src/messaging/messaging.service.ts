@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
 } from "@nestjs/common";
 import {
   ConversationStatus,
@@ -242,13 +243,19 @@ export class MessagingService {
   }
 
   async getConversation(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+    });
+    if (!conversation) throw new NotFoundException("conversation not found");
     return this.assertParticipant(conversationId, userId);
   }
 
   async getByRide(rideId: string, userId: string) {
-    const conversation = await this.prisma.conversation.findUniqueOrThrow({
+    const conversation = await this.prisma.conversation.findUnique({
       where: { rideId },
     });
+    if (!conversation)
+      throw new NotFoundException("no conversation for this ride");
     return this.assertParticipant(conversation.id, userId);
   }
 

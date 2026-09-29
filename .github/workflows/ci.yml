@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hailing/api exec prisma generate
+      - run: pnpm --filter @hailing/worker exec prisma generate --schema ../api/prisma/schema.prisma
       - run: pnpm exec turbo run build test typecheck lint --force
       - run: |
           cp apps/api/.env.example apps/api/.env

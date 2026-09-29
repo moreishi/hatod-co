@@ -1,0 +1,23 @@
+{
+  "name": "@hailing/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end tests on an isolated stack (own ports + database)",
+  "type": "module",
+  "scripts": {
+    "pretest": "tsx kill-ports.ts",
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:portals": "playwright test --project=portals",
+    "seed": "tsx seed.ts",
+    "lint": "prettier --check \"**/*.{ts,json}\" --ignore-path .prettierignore",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}

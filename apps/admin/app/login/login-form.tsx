@@ -49,6 +49,9 @@ export function LoginForm() {
         const body = (await res.json()) as { message?: string };
         throw new Error(body.message ?? "invalid code");
       }
+      // Clear the prefetch cache: pre-login prefetches of gated pages replay
+      // their 307s otherwise and the push silently goes nowhere.
+      router.refresh();
       router.push("/me");
     } catch (e) {
       setError(e instanceof Error ? e.message : "verify failed");
