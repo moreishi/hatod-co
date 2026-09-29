@@ -34,6 +34,9 @@ export default async function MyAgencyPage() {
               </Badge>
             </div>
             <p className="mb-2 font-mono text-xs text-zinc-500 tabular-nums">{a.id}</p>
+            <p className="mb-2 text-sm text-zinc-600 tabular-nums">
+              {a.city}, {a.province} · {a.country}
+            </p>
             {a.status === "approved" && (
               <>
                 <ol className="flex flex-col gap-1 text-sm">

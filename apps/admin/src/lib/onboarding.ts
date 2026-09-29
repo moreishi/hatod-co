@@ -11,6 +11,9 @@ export interface AgencyApplication {
   userId: string;
   businessName: string;
   contactPhone: string;
+  country: string;
+  province: string;
+  city: string;
   status: AgencyStatus;
   createdAt: string;
   /** Applicant login identity (joined where available). */
@@ -20,22 +23,39 @@ export interface AgencyApplication {
 export interface NewApplication {
   businessName: string;
   contactPhone: string;
+  country: string;
+  province: string;
+  city: string;
 }
+
+const nonEmpty = (v: string, label: string): string => {
+  const s = v.trim();
+  if (!s) throw new Error(`${label} is required`);
+  return s;
+};
 
 /** A user applies their account for agency (fleet partner) status. */
 export function validateApplication(input: {
   businessName: string;
   contactPhone: string;
+  country?: string | null;
+  province?: string | null;
+  city?: string | null;
 }): NewApplication {
-  const businessName = input.businessName.trim();
-  if (!businessName) throw new Error("business name is required");
+  const businessName = nonEmpty(input.businessName, "business name");
   let contactPhone: string;
   try {
     contactPhone = normalizePhPhone(input.contactPhone);
   } catch {
     throw new Error("invalid contact phone");
   }
-  return { businessName, contactPhone };
+  return {
+    businessName,
+    contactPhone,
+    country: (input.country ?? "").trim() || "Philippines",
+    province: nonEmpty(input.province ?? "", "province"),
+    city: nonEmpty(input.city ?? "", "city"),
+  };
 }
 
 /** Review state machine — only pending applications are decidable. */
@@ -52,11 +72,14 @@ export const SignupSchema = z.object({
   email: z.string().trim().toLowerCase().email("invalid email"),
   businessName: z.string().trim().min(1, "business name is required"),
   contactPhone: z.string().trim().min(1, "contact phone is required"),
+  country: z.string().trim().optional().default(""),
+  province: z.string().trim().min(1, "province is required"),
+  city: z.string().trim().min(1, "city is required"),
 });
 
 export type Signup = z.infer<typeof SignupSchema>;
 
-export function validateSignup(input: unknown): Signup & { contactPhone: string } {
+export function validateSignup(input: unknown): Signup & { contactPhone: string; country: string } {
   const parsed = SignupSchema.parse(input);
   let contactPhone: string;
   try {
@@ -64,7 +87,7 @@ export function validateSignup(input: unknown): Signup & { contactPhone: string 
   } catch {
     throw new Error("invalid contact phone");
   }
-  return { ...parsed, contactPhone };
+  return { ...parsed, contactPhone, country: parsed.country.trim() || "Philippines" };
 }
 
 export const ONBOARDING_STEPS = ["docs", "fleet", "payout", "briefing", "golive"] as const;

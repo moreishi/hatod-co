@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS agency_applications (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   business_name TEXT NOT NULL, contact_phone TEXT NOT NULL,
+  country TEXT NOT NULL DEFAULT 'Philippines',
+  province TEXT NOT NULL DEFAULT 'South Cotabato',
+  city TEXT NOT NULL DEFAULT 'General Santos',
   status TEXT NOT NULL DEFAULT 'pending',
   decided_by TEXT REFERENCES users(id), decided_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -272,6 +275,9 @@ function migrate(db: DatabaseSync) {
     if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
   };
   ensure("riders", "user_id", "user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+  ensure("agency_applications", "country", "country TEXT NOT NULL DEFAULT 'Philippines'");
+  ensure("agency_applications", "province", "province TEXT NOT NULL DEFAULT 'South Cotabato'");
+  ensure("agency_applications", "city", "city TEXT NOT NULL DEFAULT 'General Santos'");
   ensure("users", "active", "active INTEGER NOT NULL DEFAULT 1");
   ensure("users", "last_login_at", "last_login_at TEXT");
   ensure("riders", "email", "email TEXT");

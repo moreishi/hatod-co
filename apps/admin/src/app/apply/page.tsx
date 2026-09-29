@@ -23,6 +23,17 @@ export default function ApplyPage() {
           <Field label="Contact phone (also your login)">
             <input name="contactPhone" required placeholder="09171110011" className={inputCls} />
           </Field>
+          <Field label="Country">
+            <input name="country" defaultValue="Philippines" className={inputCls} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Province">
+              <input name="province" required placeholder="South Cotabato" className={inputCls} />
+            </Field>
+            <Field label="City">
+              <input name="city" required placeholder="General Santos" className={inputCls} />
+            </Field>
+          </div>
           <Btn tone="primary" type="submit" className="py-2 text-sm">
             Submit application
           </Btn>

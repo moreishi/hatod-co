@@ -41,7 +41,7 @@ export default async function AgencyPage({
               <input
                 name="q"
                 defaultValue={q}
-                placeholder="Fleet Co, 0917…, @…"
+                placeholder="Fleet Co, 0917…, @…, city…"
                 className={inputCls}
               />
             </Field>
@@ -62,10 +62,11 @@ export default async function AgencyPage({
       </Card>
       <Card flush>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-4 py-2">Business</th>
+                <th className="px-4 py-2">Area</th>
                 <th className="px-4 py-2">Phone</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">Actions</th>
@@ -74,7 +75,7 @@ export default async function AgencyPage({
             <tbody className="divide-y divide-zinc-100">
               {apps.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-zinc-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-zinc-500">
                     No applications match.
                   </td>
                 </tr>
@@ -87,6 +88,12 @@ export default async function AgencyPage({
                     {a.applicantEmail && (
                       <p className="text-xs text-zinc-500">{a.applicantEmail}</p>
                     )}
+                  </td>
+                  <td className="px-4 py-2 text-xs">
+                    {a.city}
+                    <span className="block text-zinc-500">
+                      {a.province} · {a.country}
+                    </span>
                   </td>
                   <td className="px-4 py-2 tabular-nums">{a.contactPhone}</td>
                   <td className="px-4 py-2">

@@ -14,20 +14,28 @@ describe("validateSignup (public agency signup)", () => {
       email: "maria@fleet.ph",
       businessName: "Gensan Fleet Co",
       contactPhone: "09171110011",
+      country: "Philippines",
+      province: "South Cotabato",
+      city: "General Santos",
     });
     expect(s.email).toBe("maria@fleet.ph");
     expect(s.contactPhone).toBe("+639171110011");
+    expect(s.city).toBe("General Santos");
   });
 
-  it("rejects bad identity or bad business data", () => {
+  it("defaults country to Philippines, requires province and city", () => {
     const base = {
       name: "Maria",
       email: "maria@fleet.ph",
       businessName: "Fleet Co",
       contactPhone: "09171110011",
+      province: "South Cotabato",
+      city: "General Santos",
     };
+    expect(validateSignup(base).country).toBe("Philippines");
     expect(() => validateSignup({ ...base, email: "nope" })).toThrow(/email/i);
-    expect(() => validateSignup({ ...base, businessName: " " })).toThrow(/business/i);
+    expect(() => validateSignup({ ...base, province: "  " })).toThrow(/province/i);
+    expect(() => validateSignup({ ...base, city: "" })).toThrow(/city/i);
     expect(() => validateSignup({ ...base, contactPhone: "123" })).toThrow(/phone/i);
   });
 });

@@ -35,6 +35,9 @@ function rowToApp(row: Record<string, unknown>): AgencyApplication {
     userId: String(row.user_id),
     businessName: String(row.business_name),
     contactPhone: String(row.contact_phone),
+    country: String(row.country ?? "Philippines"),
+    province: String(row.province ?? ""),
+    city: String(row.city ?? ""),
     status: row.status as AgencyStatus,
     createdAt: new Date(row.created_at as string).toISOString(),
     applicantEmail: row.account_email == null ? null : String(row.account_email),
@@ -60,7 +63,7 @@ export interface ApplicationPage {
 
 const APP_PER_PAGE = 10;
 
-/** Review queue: DB search (business/phone/email) + status filter + pagination. */
+/** Review queue: DB search (business/phone/email/city) + status filter + pagination. */
 export async function listApplicationsPaged(
   q = "",
   status = "",
@@ -70,9 +73,9 @@ export async function listApplicationsPaged(
   const like = `%${needle}%`;
   const cleanStatus = ["pending", "approved", "rejected"].includes(status) ? status : "";
   // One value per slot on both dialects.
-  const where = `WHERE ($1 = '' OR a.business_name LIKE $2 OR a.contact_phone LIKE $3 OR u.email LIKE $4)
-    AND ($5 = '' OR a.status = $6)`;
-  const params = [needle, like, like, like, cleanStatus, cleanStatus];
+  const where = `WHERE ($1 = '' OR a.business_name LIKE $2 OR a.contact_phone LIKE $3 OR u.email LIKE $4 OR a.city LIKE $5 OR a.province LIKE $6)
+    AND ($7 = '' OR a.status = $8)`;
+  const params = [needle, like, like, like, like, like, cleanStatus, cleanStatus];
   const totalRows = await queryDb<{ n: number }>(
     `SELECT COUNT(*) AS n FROM agency_applications a LEFT JOIN users u ON u.id = a.user_id ${where}`,
     params as unknown[],
@@ -102,17 +105,20 @@ export async function listMyApplications(userId: string): Promise<AgencyApplicat
 
 export async function createApplication(
   userId: string,
-  input: { businessName: string; contactPhone: string },
+  input: { businessName: string; contactPhone: string; country?: string | null; province?: string | null; city?: string | null },
 ): Promise<AgencyApplication> {
   const clean = validateApplication(input);
   const q = insertQuery(
     "agency_applications",
-    ["id", "user_id", "business_name", "contact_phone"],
+    ["id", "user_id", "business_name", "contact_phone", "country", "province", "city"],
     {
       id: `app-${Date.now()}`,
       user_id: userId,
       business_name: clean.businessName,
       contact_phone: clean.contactPhone,
+      country: clean.country,
+      province: clean.province,
+      city: clean.city,
     },
   );
   const rows = await queryDb<Record<string, unknown>>(q.text, q.values);
@@ -169,6 +175,9 @@ export async function signupAgency(input: unknown): Promise<{ applicationId: str
   const app = await createApplication(userId, {
     businessName: clean.businessName,
     contactPhone: clean.contactPhone,
+    country: clean.country,
+    province: clean.province,
+    city: clean.city,
   });
   return { applicationId: app.id };
 }
