@@ -18,7 +18,7 @@ pnpm dev                                              # turbo: api :3001, agency
 | API     | http://localhost:3001/api                                               |
 | Health  | http://localhost:3001/api/health                                        |
 | Admin   | http://localhost:3000 (`@hailing/admin`; login `0917100000` + dev code) |
-| Agency  | http://localhost:3002            |
+| Agency  | http://localhost:3002                                                   |
 
 ## With Docker (LocalStage full stack)
 
@@ -42,3 +42,20 @@ docker compose -f infrastructure/docker-compose.yml up --build
 - Seeds run against `file:` SQLite URLs only — `seed.ts` aborts otherwise.
 - `dev.db` is gitignored; migrations are committed.
 - Production parity (Postgres/PostGIS) happens in CI + Coolify, not here.
+
+## Production database (Postgres + PostGIS)
+
+LocalStage stays on SQLite (`prisma/schema.prisma`) per spec rule — do not
+replace it. Production uses a second schema:
+
+- `apps/api/prisma/postgres/schema.prisma` — same models, `provider = "postgresql"`.
+- `apps/api/prisma/postgres/migrations/` — `000_init` baseline plus
+  `001_checks_postgis` (PostGIS extension + CHECK constraints mirroring
+  `@hailing/constants`).
+- After **every** SQLite schema change, mirror it in the Postgres schema and
+  run `node apps/api/scripts/check-schema-drift.mjs` (CI enforces this).
+- Generate a Postgres migration with
+  `prisma migrate diff` (see `docs` history), never by hand-editing the baseline.
+- CI `postgres` job deploys both migrations to `postgis/postgis:16-3.4`.
+  Production deploys generate the client from the Postgres schema and run
+  `prisma migrate deploy --schema prisma/postgres/schema.prisma`.
