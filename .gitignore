@@ -12,6 +12,8 @@ dist/
 build/
 out/
 .turbo/
+*.tsbuildinfo
+next-env.d.ts
 
 # Prisma / SQLite (dev-only, spec §6: LocalStage exclusive; migrations ARE committed)
 *.sqlite3
