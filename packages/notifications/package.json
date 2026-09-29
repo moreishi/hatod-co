@@ -1,0 +1,21 @@
+{
+  "name": "@hailing/notifications",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Notification provider contracts + LocalStage providers (spec §47)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@hailing/constants": "workspace:*",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
