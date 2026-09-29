@@ -258,6 +258,9 @@ importers:
       '@hailing/data':
         specifier: workspace:*
         version: link:../../packages/data
+      '@hailing/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -304,10 +307,19 @@ importers:
       '@hailing/constants':
         specifier: workspace:*
         version: link:../../packages/constants
+      '@hailing/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
+      '@prisma/client':
+        specifier: ^6.0.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.4
+      prisma:
+        specifier: ^6.0.0
+        version: 6.19.3(typescript@5.9.3)
       tsx:
         specifier: ^4.19.0
         version: 4.23.15

@@ -6,7 +6,7 @@ import {
 import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { AdminRole } from "@hailing/constants";
-import { PrismaService } from "../auth/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 export interface InviteAdminDto {
   email: string;

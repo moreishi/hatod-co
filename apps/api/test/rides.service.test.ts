@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { RideStatus } from "@hailing/constants";
-import type { PrismaService } from "../src/auth/prisma.service.js";
+import type { PrismaService } from "../src/prisma/prisma.service.js";
 import { quoteFare } from "../src/rides/fare.js";
 import { RideTransitionGuard } from "../src/rides/ride-transition.guard.js";
 import { RidesService } from "../src/rides/rides.service.js";
@@ -30,9 +30,21 @@ describe("quoteFare (spec rule 37)", () => {
 function serviceWith(db: Record<string, unknown>) {
   const prisma = {
     ...db,
+    user: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({ id: "rider-1", phone: "09170000001" }),
+      ...(typeof db.user === "object" && db.user !== null ? db.user : {}),
+    },
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
-  return new RidesService(prisma, new RideTransitionGuard());
+  const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
+  const service = new RidesService(
+    prisma,
+    new RideTransitionGuard(),
+    notifications as never,
+  );
+  return Object.assign(service, { sent: notifications });
 }
 
 const dto = {
@@ -83,10 +95,18 @@ describe("RidesService", () => {
       status: "ACTIVE",
       assignments: [{ vehicleId: "v-1" }],
     };
-    const assigned = (await mk(good).assignRide("ride-1", "d-1", "actor")) as {
+    const assignedSvc = mk(good);
+    const assigned = (await assignedSvc.assignRide(
+      "ride-1",
+      "d-1",
+      "actor",
+    )) as {
       status: string;
     };
     expect(assigned.status).toBe(RideStatus.ASSIGNED);
+    expect(assignedSvc.sent.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ template: "RIDE_ASSIGNED" }),
+    );
 
     const suspended = { ...good, status: "SUSPENDED" };
     await expect(
@@ -137,6 +157,9 @@ describe("RidesService", () => {
     const earning = txns.find((t) => t.type === "RIDE_EARNING")!;
     const commission = txns.find((t) => t.type === "COMMISSION")!;
     expect(earning.amountCentavos + commission.amountCentavos).toBe(19000);
+    expect(svc.sent.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ template: "RIDE_COMPLETED" }),
+    );
 
     await expect(
       svc.transitionRide("ride-1", RideStatus.ASSIGNED, "actor"),

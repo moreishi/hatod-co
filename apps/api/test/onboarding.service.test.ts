@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PrismaService } from "../src/auth/prisma.service.js";
+import type { PrismaService } from "../src/prisma/prisma.service.js";
 import { OnboardingService } from "../src/onboarding/onboarding.service.js";
 
 function serviceWith(db: Record<string, unknown>) {
@@ -7,7 +7,9 @@ function serviceWith(db: Record<string, unknown>) {
     ...db,
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
-  return new OnboardingService(prisma);
+  const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
+  const service = new OnboardingService(prisma, notifications as never);
+  return Object.assign(service, { sent: notifications });
 }
 
 describe("OnboardingService (spec §21-§24)", () => {
@@ -98,6 +100,10 @@ describe("OnboardingService (spec §21-§24)", () => {
           findUniqueOrThrow: vi
             .fn()
             .mockResolvedValue({ id: "d-1", status: "DOCUMENTS_UNDER_REVIEW" }),
+          findUnique: vi.fn().mockResolvedValue({
+            id: "d-1",
+            user: { id: "u-1", phone: "09170000001" },
+          }),
           update: vi
             .fn()
             .mockImplementation((a: { data: object }) =>
@@ -110,12 +116,18 @@ describe("OnboardingService (spec §21-§24)", () => {
     await expect(mk([]).reviewDriver("d-1", "approve", "rev")).rejects.toThrow(
       "missing verified documents",
     );
-    const ok = (await mk([
+    const okSvc = mk([
       { type: "DRIVERS_LICENSE", status: "VERIFIED" },
       { type: "OR_CR", status: "VERIFIED" },
       { type: "NBI_CLEARANCE", status: "VERIFIED" },
-    ]).reviewDriver("d-1", "approve", "rev")) as { status: string };
+    ]);
+    const ok = (await okSvc.reviewDriver("d-1", "approve", "rev")) as {
+      status: string;
+    };
     expect(ok.status).toBe("ACTIVE");
+    expect(okSvc.sent.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ template: "DRIVER_APPROVED" }),
+    );
   });
 
   it("walks start-review and reject along legal states", async () => {

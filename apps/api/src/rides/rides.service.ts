@@ -7,9 +7,10 @@ import {
   VehicleType,
   WalletOwnerType,
 } from "@hailing/constants";
-import { PrismaService } from "../auth/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { quoteFare } from "./fare.js";
 import { RideTransitionGuard } from "./ride-transition.guard.js";
+import { NotificationsService } from "../notifications/notifications.service.js";
 import { pricing } from "@hailing/data";
 
 export interface RequestRideDto {
@@ -29,6 +30,7 @@ export class RidesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly guard: RideTransitionGuard,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Rider requests a ride → REQUESTED with an upfront quoted fare. */
@@ -60,7 +62,10 @@ export class RidesService {
     this.guard.assertTransition(ride.status as RideStatus, RideStatus.ASSIGNED);
     const driver = await this.prisma.driver.findUniqueOrThrow({
       where: { id: driverId },
-      include: { assignments: { where: { isActive: true } } },
+      include: {
+        assignments: { where: { isActive: true } },
+        user: { select: { displayName: true } },
+      },
     });
     if (
       !(DISPATCHABLE_DRIVER_STATUSES as readonly string[]).includes(
@@ -88,6 +93,7 @@ export class RidesService {
         data: { rideId, from: ride.status, to: RideStatus.ASSIGNED, actorId },
       }),
     ]);
+    await this.notifyRider(rideId, "RIDE_ASSIGNED");
     return updated;
   }
 
@@ -146,7 +152,7 @@ export class RidesService {
         },
       },
     });
-    return this.prisma.$transaction([
+    const [completed] = await this.prisma.$transaction([
       this.prisma.ride.update({
         where: { id: rideId },
         data: { status: RideStatus.COMPLETED, completedAt: new Date() },
@@ -179,6 +185,40 @@ export class RidesService {
         data: { balanceCentavos: platformWallet.balanceCentavos + commission },
       }),
     ]);
+    await this.notifyRider(rideId, "RIDE_COMPLETED");
+    return completed;
+  }
+
+  /** Best-effort rider SMS for assignment + completion (outbox, worker sends). */
+  private async notifyRider(
+    rideId: string,
+    template: "RIDE_ASSIGNED" | "RIDE_COMPLETED",
+  ) {
+    const ride = await this.prisma.ride.findUniqueOrThrow({
+      where: { id: rideId },
+      include: {
+        driver: { include: { user: { select: { displayName: true } } } },
+      },
+    });
+    const rider = await this.prisma.user.findUnique({
+      where: { id: ride.riderId },
+    });
+    if (!rider) return;
+    const fare = `₱${(ride.fareCentavos / 100).toFixed(2)}`;
+    await this.notifications.enqueue({
+      userId: rider.id,
+      channel: "SMS",
+      to: rider.phone,
+      template,
+      variables:
+        template === "RIDE_ASSIGNED"
+          ? {
+              driver: ride.driver?.user.displayName ?? "your driver",
+              pickup: ride.pickupLabel,
+              fare,
+            }
+          : { fare, method: ride.paymentMethod },
+    });
   }
 
   getRide(id: string) {

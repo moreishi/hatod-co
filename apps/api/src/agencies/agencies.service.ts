@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import { AdminRole, DriverStatus } from "@hailing/constants";
-import { PrismaService } from "../auth/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
 
 export interface CreateVehicleDto {

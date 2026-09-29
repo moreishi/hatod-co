@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module.js";
+import { NotificationsModule } from "../notifications/notifications.module.js";
 import { OnboardingController } from "./onboarding.controller.js";
 import { OnboardingService } from "./onboarding.service.js";
 
 @Module({
-  imports: [AuthModule],
+  imports: [NotificationsModule],
   controllers: [OnboardingController],
   providers: [OnboardingService],
   exports: [OnboardingService],

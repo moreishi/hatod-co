@@ -249,6 +249,8 @@ model Notification {
   template  String
   payload   String    @default("{}")
   status    String    @default("QUEUED")
+  attempts  Int       @default(0)
+  lastError String?
   sentAt    DateTime?
   createdAt DateTime  @default(now())
 
