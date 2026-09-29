@@ -18,10 +18,8 @@ test("rider books a ride with a live fare quote", async ({ page }) => {
   await expect(page.getByText(/₱\d+\.\d{2}/).first()).toBeVisible();
   await page.getByRole("button", { name: "Book ride" }).click();
   await page.waitForURL(/\/rides\/.+/);
-  await expect(page.getByText("REQUESTED")).toBeVisible();
-  await expect(
-    page.getByText("Chat opens once a driver is assigned."),
-  ).toBeVisible();
+  // Auto-match may assign the ride (or park it) before the page loads.
+  await expect(page.getByText(/REQUESTED|ASSIGNED|NO_DRIVERS/)).toBeVisible();
 });
 
 test("rider sees ride history", async ({ page }) => {

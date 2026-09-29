@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { quoteFare } from "./fare.js";
 import { RideTransitionGuard } from "./ride-transition.guard.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
+import { MatchingService } from "../matching/matching.service.js";
 import { MessagingService } from "../messaging/messaging.service.js";
 import { RideEventsGateway } from "../realtime/ride-events.gateway.js";
 import { RoutingService, type LatLng } from "@hailing/routing";
@@ -19,6 +20,8 @@ import { pricing } from "@hailing/data";
 export interface RequestRideDto {
   pickupLabel: string;
   pickupBrgyCode: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffLabel: string;
   dropoffBrgyCode: string;
   distanceKm: number;
@@ -39,6 +42,7 @@ export class RidesService {
     private readonly notifications: NotificationsService,
     @Inject(RideEventsGateway) private readonly realtime: RideEventsGateway,
     @Inject(MessagingService) private readonly messaging: MessagingService,
+    @Inject(MatchingService) private readonly matching: MatchingService,
   ) {}
 
   /** Upfront quote from real coordinates (routing spec §35: separated from booking). */
@@ -66,19 +70,25 @@ export class RidesService {
       vehicleType: dto.vehicleType,
       distanceKm: dto.distanceKm,
     });
-    return this.prisma.ride.create({
+    const created = await this.prisma.ride.create({
       data: {
         riderId,
         status: RideStatus.REQUESTED,
         pickupLabel: dto.pickupLabel,
         pickupBrgyCode: dto.pickupBrgyCode,
+        pickupLat: dto.pickupLat,
+        pickupLng: dto.pickupLng,
         dropoffLabel: dto.dropoffLabel,
         dropoffBrgyCode: dto.dropoffBrgyCode,
         distanceKm: dto.distanceKm,
         fareCentavos,
+        vehicleType: dto.vehicleType,
         paymentMethod: dto.paymentMethod,
       },
     });
+    // Fire-and-forget auto-match; booking is already persisted (persist first).
+    void this.matching.matchRide(created.id).catch(() => undefined);
+    return created;
   }
 
   /** Dispatcher assigns a dispatchable driver (ACTIVE + active vehicle assignment). */
@@ -109,6 +119,8 @@ export class RidesService {
     const assignment = driver.assignments[0];
     if (!assignment)
       throw new Error(`driver ${driverId} has no active vehicle`);
+    // Dispatcher manual assignment wins over any pending auto-match offer.
+    this.matching.cancelOffers(rideId);
     const [updated] = await this.prisma.$transaction([
       this.prisma.ride.update({
         where: { id: rideId },
