@@ -156,10 +156,23 @@ export async function settleTrip(tripId: string): Promise<RideSplit> {
   const fareCents = toCentavos(Number(trip.fare_quote));
   const split = settleRide(fareCents);
   if (done.length > 0) return split;
-  const riderId = trip.rider_id == null ? null : String(trip.rider_id);
-  const driverId = trip.driver_id == null ? null : String(trip.driver_id);
-  if (!riderId) throw new Error("trip has no rider account");
-  if (!driverId) throw new Error("trip has no driver");
+  // trips.rider_id/driver_id are PROFILE ids — wallets key on users.id.
+  const riderProfileId = trip.rider_id == null ? null : String(trip.rider_id);
+  const driverProfileId = trip.driver_id == null ? null : String(trip.driver_id);
+  if (!riderProfileId) throw new Error("trip has no rider");
+  if (!driverProfileId) throw new Error("trip has no driver");
+  const riderRows = await queryDb<{ user_id: string | null }>(
+    "SELECT user_id FROM riders WHERE id = $1",
+    [riderProfileId],
+  );
+  const driverRows = await queryDb<{ user_id: string | null }>(
+    "SELECT user_id FROM drivers WHERE id = $1",
+    [driverProfileId],
+  );
+  const riderId = riderRows[0]?.user_id ?? null;
+  const driverId = driverRows[0]?.user_id ?? null;
+  if (!riderId) throw new Error("rider has no login account");
+  if (!driverId) throw new Error("driver has no login account");
   await ensureWallet(riderId);
   await ensureWallet(driverId);
   await recordTx({ userId: riderId, type: "ride_debit", amountCents: split.rider, ref: tripId, actorId: null });

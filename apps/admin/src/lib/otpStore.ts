@@ -37,6 +37,10 @@ async function latest(phone: string): Promise<OtpRow | null> {
  */
 export async function requestOtp(rawPhone: string): Promise<{ retryAfterS?: number }> {
   const phone = normalizePhPhone(rawPhone);
+  // Opportunistic graveyard shift: dead codes never accumulate.
+  await queryDb("DELETE FROM otp_codes WHERE expires_at < CURRENT_TIMESTAMP", []).catch(
+    () => undefined,
+  );
   const prev = await latest(phone);
   const gate = otpThrottle(
     prev ? { requestedAt: prev.requested_at } : null,

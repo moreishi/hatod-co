@@ -135,6 +135,10 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
 );
 CREATE INDEX IF NOT EXISTS wallet_tx_user_idx ON wallet_transactions (user_id);
 CREATE INDEX IF NOT EXISTS wallet_tx_ref_idx ON wallet_transactions (ref);
+CREATE INDEX IF NOT EXISTS trips_driver_idx ON trips (driver_id);
+CREATE INDEX IF NOT EXISTS trips_rider_idx ON trips (rider_id);
+CREATE INDEX IF NOT EXISTS trips_zone_idx ON trips (zone_id);
+CREATE INDEX IF NOT EXISTS trips_status_idx ON trips (status);
 CREATE TABLE IF NOT EXISTS otp_codes (
   phone TEXT PRIMARY KEY,
   code_hash TEXT NOT NULL,
