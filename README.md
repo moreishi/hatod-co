@@ -5,18 +5,23 @@ event-driven internals; the full blueprint is `HAILING_PROJECT_SPECIFICATION.md`
 
 ## Stack
 
-| Layer         | Choice                                                                               |
-| ------------- | ------------------------------------------------------------------------------------ |
-| API           | NestJS 11 + Prisma (`apps/api`, `:3001`)                                             |
-| Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                    |
-| Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                   |
-| Worker        | Outbox consumer for notifications (`apps/worker`)                                    |
-| Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications` |
-| Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                         |
-| DB dev        | SQLite LocalStage (`apps/api/prisma/dev.db`, Prisma migrations + seed)               |
-| DB prod       | Postgres 16 + PostGIS (Coolify; see `infrastructure/`)                               |
-| Realtime      | Socket.io gateway (`/realtime`); Redis adapter in production                         |
-| Money         | Wallets + double-entry ledger (centavos); cash + wallet payments                     |
+| Layer         | Choice                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| API           | NestJS 11 + Prisma (`apps/api`, `:3001`)                                                    |
+| Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                           |
+| Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                          |
+| Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                         |
+| Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phase 1)                        |
+| E2E           | Playwright suite on an isolated stack (`apps/e2e`, ports 3100–3102)                         |
+| Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications`        |
+| Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                                |
+| Rides         | Request → assign → accept/reject → en route → arrived → in progress → completed/cancelled   |
+| Messaging     | One conversation per ride, TEXT/SYSTEM, SENT/DELIVERED/READ, idempotent sends, rate-limited |
+| Realtime      | Socket.io gateway (`/realtime`, token-authed rooms for rides, agencies, conversations)      |
+| DB dev        | SQLite LocalStage (`apps/api/prisma/dev.db`, Prisma migrations + seed)                      |
+| DB prod       | Postgres 16 + PostGIS (Coolify; see `infrastructure/`)                                      |
+| Realtime      | Socket.io gateway (`/realtime`); Redis adapter in production                                |
+| Money         | Wallets + double-entry ledger (centavos); cash + wallet payments                            |
 
 ## Quickstart (no Docker)
 
@@ -54,15 +59,18 @@ docker compose -f infrastructure/docker-compose.yml up --build
 pnpm exec turbo run build test typecheck lint --force
 ```
 
-Plus `prisma:validate` after seed changes. CI runs the same on every push/PR.
+Plus `prisma:validate` after seed changes and `prisma generate` after schema
+changes. CI runs the same on every push/PR, including the E2E suite.
 
 ## Repo layout
 
 ```
-apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, notifications, realtime)
-apps/admin/      Platform admin portal (session, rides, finance, admins/invites)
+apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, notifications, realtime, messaging)
+apps/admin/      Platform admin portal (session, rides, finance, admins/invites, audit)
 apps/agency/     Agency portal (home, driver board, dispatch, documents, fleet)
-apps/worker/     Notification outbox consumer
+apps/worker/     Notification outbox consumer + retention purge
+apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept)
+apps/e2e/        Playwright specs on isolated ports + database
 packages/        constants, data, notifications
 infrastructure/  docker-compose.yml (LocalStage), Dockerfiles per app
 docs/            localstage.md run guide
