@@ -210,3 +210,26 @@ export function provincesOf(region?: string): Province[] {
 export function citiesOf(province: string): string[] {
   return CITIES_OF[province] ?? [];
 }
+
+const norm = (s: string): string => s.trim().toLowerCase();
+
+/** Provinces containing a city (exact, case-insensitive). Empty when unknown. */
+export function provincesForCity(city: string): string[] {
+  const want = norm(city);
+  if (!want) return [];
+  return Object.keys(CITIES_OF).filter((prov) =>
+    (CITIES_OF[prov] ?? []).some((c) => norm(c) === want),
+  );
+}
+
+/**
+ * Keep province and city coinciding: a typed city keeps its province when it
+ * fits, otherwise switches to the owning province (first match when ambiguous).
+ * Null when the city is unknown — free text still submits.
+ */
+export function resolveProvince(city: string, currentProvince: string): string | null {
+  const owners = provincesForCity(city);
+  if (owners.length === 0) return null;
+  if (owners.includes(currentProvince)) return currentProvince;
+  return owners[0];
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COUNTRIES, PROVINCES, citiesOf, provincesOf } from "./geoPh";
+import { COUNTRIES, PROVINCES, citiesOf, provincesOf, resolveProvince } from "./geoPh";
 
 describe("geoPh constants", () => {
   it("covers all 82 Philippine provinces", () => {
@@ -30,5 +30,26 @@ describe("geoPh constants", () => {
 
   it("lists Philippines first among countries", () => {
     expect(COUNTRIES[0]).toBe("Philippines");
+  });
+});
+
+describe("resolveProvince (city ↔ province linkage)", () => {
+  it("keeps the province when the city belongs to it", () => {
+    expect(resolveProvince("Koronadal", "South Cotabato")).toBe("South Cotabato");
+  });
+
+  it("switches to the owning province for unique cities", () => {
+    expect(resolveProvince("Mati", "South Cotabato")).toBe("Davao Oriental");
+  });
+
+  it("prefers the current province for ambiguous city names", () => {
+    // San Carlos exists in Pangasinan and Negros Occidental — stay put when it fits.
+    expect(resolveProvince("San Carlos", "Negros Occidental")).toBe("Negros Occidental");
+    expect(resolveProvince("San Carlos", "South Cotabato")).toBe("Pangasinan");
+  });
+
+  it("returns null when the city is unknown or blank", () => {
+    expect(resolveProvince("Narnia Town", "South Cotabato")).toBeNull();
+    expect(resolveProvince("  ", "South Cotabato")).toBeNull();
   });
 });
