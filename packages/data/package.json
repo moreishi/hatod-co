@@ -4,9 +4,13 @@
   "private": true,
   "description": "Centralized geography + reference datasets (spec §11, §12)",
   "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "files": ["dist"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "prettier --check \"geography/**/*.json\" \"reference/**/*.json\" \"test/**/*.ts\"",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"geography/**/*.json\" \"reference/**/*.json\"",
     "test": "vitest run"
   },
   "devDependencies": {

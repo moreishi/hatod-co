@@ -16,8 +16,7 @@ import {
   VehicleType,
   WalletOwnerType,
 } from "@hailing/constants";
-import cebu from "../../../packages/data/geography/cebu.json" with { type: "json" };
-import pricing from "../../../packages/data/reference/pricing.json" with { type: "json" };
+import { cebu, pricing } from "@hailing/data";
 
 const SEED = 20260929;
 const PLATFORM_WALLET_ID = "platform";

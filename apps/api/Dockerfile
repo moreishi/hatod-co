@@ -6,9 +6,11 @@ FROM base AS build
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/constants/package.json packages/constants/
+COPY packages/data/package.json packages/data/
 RUN pnpm install --filter @hailing/api --frozen-lockfile
 COPY apps/api apps/api
 COPY packages/constants packages/constants
+COPY packages/data packages/data
 RUN pnpm --filter @hailing/api run build
 
 FROM base AS runtime

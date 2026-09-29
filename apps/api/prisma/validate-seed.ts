@@ -14,7 +14,7 @@ import {
   VehicleType,
   WalletOwnerType,
 } from "@hailing/constants";
-import cebu from "../../../packages/data/geography/cebu.json" with { type: "json" };
+import { allCebuCodes, cebu } from "@hailing/data";
 
 const prisma = new PrismaClient();
 const failures: string[] = [];
@@ -24,11 +24,7 @@ const check = (ok: boolean, msg: string) => {
 const inEnum = (v: string, e: Record<string, string>) =>
   Object.values(e).includes(v);
 
-const codes = new Set([
-  cebu.province.code,
-  ...cebu.cities.map((c) => c.code),
-  ...cebu.cities.flatMap((c) => c.barangays.map((b) => b.code)),
-]);
+const codes = allCebuCodes();
 
 const users = await prisma.user.count();
 check(users >= 40 && users <= 50, `users=${users}, expected 40-50`);

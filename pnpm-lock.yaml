@@ -215,6 +215,9 @@ importers:
       '@hailing/constants':
         specifier: workspace:*
         version: link:../../packages/constants
+      '@hailing/data':
+        specifier: workspace:*
+        version: link:../../packages/data
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2)

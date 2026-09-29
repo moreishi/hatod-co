@@ -26,14 +26,18 @@ export class RolesGuard implements CanActivate {
     const header = req.headers.authorization ?? "";
     const [scheme, token] = header.split(" ");
     if (scheme !== "Bearer" || !token) return false;
-    let roles: string[];
+    let payload;
     try {
-      roles = this.tokens.verify(token).roles;
+      payload = this.tokens.verify(token);
     } catch {
       return false;
     }
+    (req as { user?: unknown }).user = {
+      sub: payload.sub,
+      roles: payload.roles,
+    };
     return required.some((need) =>
-      roles.some((have) => roleMatches(need, have)),
+      payload.roles.some((have) => roleMatches(need, have)),
     );
   }
 }

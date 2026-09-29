@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import cebu from "../geography/cebu.json" with { type: "json" };
-import ph from "../geography/philippines.json" with { type: "json" };
+import { allCebuCodes, cebu, philippines } from "../src/index.js";
 
 /** Spec §11 + rules 16-20: stable codes, hierarchy integrity, no duplicates. */
 describe("cebu pilot geography", () => {
@@ -37,9 +36,15 @@ describe("cebu pilot geography", () => {
 
 describe("philippines region stub", () => {
   it("lists Cebu under Region VII", () => {
-    const regionVII = ph.regions.find((r) => r.code === "07");
+    const regionVII = philippines.regions.find((r) => r.code === "07");
     expect(regionVII?.provinces.map((p) => p.code)).toContain(
       cebu.province.code,
     );
+  });
+
+  it("exposes every code through allCebuCodes", () => {
+    const codes = allCebuCodes();
+    expect(codes.has(cebu.province.code)).toBe(true);
+    expect(codes.size).toBeGreaterThan(30);
   });
 });
