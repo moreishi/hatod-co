@@ -115,6 +115,39 @@ export class AdminService {
     });
   }
 
+  /** Sensitive admin/financial operations trail (spec rule 53). */
+  async listAuditLogs() {
+    return this.prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }
+
+  /**
+   * Read-only support inspection of a conversation (messaging spec §22).
+   * Audited; message content is never written to the audit row.
+   */
+  async inspectConversation(conversationId: string, adminId: string) {
+    const conversation = await this.prisma.conversation.findUniqueOrThrow({
+      where: { id: conversationId },
+      include: { ride: { select: { id: true, status: true } } },
+    });
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 50,
+    });
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: adminId,
+        action: "conversation.view",
+        entity: "Conversation",
+        entityId: conversationId,
+      },
+    });
+    return { conversation, messages };
+  }
+
   /** Finance summary: totals per transaction type + wallet count. */
   async financeSummary() {
     const groups = await this.prisma.ledgerTransaction.groupBy({

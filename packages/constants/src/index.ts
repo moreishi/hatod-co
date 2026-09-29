@@ -123,3 +123,36 @@ export type NotificationChannel =
 
 /** Money is stored in centavos (integers) everywhere. */
 export const CENTAVOS_PER_PESO = 100;
+
+/** Conversation lifecycle (messaging spec §3). One conversation per booking. */
+export const ConversationStatus = {
+  PENDING: "PENDING",
+  ACTIVE: "ACTIVE",
+  CLOSED: "CLOSED",
+} as const;
+export type ConversationStatus =
+  (typeof ConversationStatus)[keyof typeof ConversationStatus];
+
+/** V1 message types (spec §6). */
+export const MessageType = {
+  TEXT: "TEXT",
+  SYSTEM: "SYSTEM",
+} as const;
+export type MessageType = (typeof MessageType)[keyof typeof MessageType];
+
+/** Message delivery states (spec §7). */
+export const MessageStatus = {
+  SENT: "SENT",
+  DELIVERED: "DELIVERED",
+  READ: "READ",
+} as const;
+export type MessageStatus = (typeof MessageStatus)[keyof typeof MessageStatus];
+
+/** Messaging limits and retention (spec §18, §19, §30). */
+export const MESSAGE_PAGE_SIZE = 30;
+export const MAX_MESSAGE_LENGTH = 1000;
+export const MIN_MESSAGE_LENGTH = 1;
+export const MAX_MESSAGES_PER_MINUTE = 20;
+export const MAX_MESSAGES_PER_CONVERSATION_PER_MINUTE = 30;
+export const MESSAGE_RETENTION_DAYS = 365;
+export const CLOSED_CONVERSATION_RETENTION_DAYS = 90;

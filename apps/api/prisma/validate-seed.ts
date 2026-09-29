@@ -6,7 +6,10 @@ import { PrismaClient } from "@prisma/client";
 import {
   AdminRole,
   AgencyRole,
+  ConversationStatus,
   DriverStatus,
+  MessageStatus,
+  MessageType,
   PaymentMethod,
   RideStatus,
   RideTransitions,
@@ -133,6 +136,65 @@ for (const ride of await prisma.ride.findMany()) {
     );
   }
 }
+
+const ridesById = new Map(
+  (await prisma.ride.findMany({ include: { driver: true } })).map((r) => [
+    r.id,
+    r,
+  ]),
+);
+const conversations = await prisma.conversation.findMany();
+const seenRides = new Set<string>();
+let unreadSeeded = 0;
+for (const c of conversations) {
+  check(
+    inEnum(c.status, ConversationStatus),
+    `conversation ${c.id} status unknown`,
+  );
+  check(
+    !seenRides.has(c.rideId),
+    `duplicate conversation for ride ${c.rideId}`,
+  );
+  seenRides.add(c.rideId);
+  const ride = ridesById.get(c.rideId);
+  check(!!ride, `conversation ${c.id} references missing ride`);
+  if (ride) {
+    check(c.riderId === ride.riderId, `conversation ${c.id} rider mismatch`);
+    check(
+      (ride.driver && c.driverId === ride.driver.userId) || !ride.driver,
+      `conversation ${c.id} driver mismatch`,
+    );
+    if (ride.status === "COMPLETED" || ride.status === "CANCELLED") {
+      check(
+        c.status === "CLOSED",
+        `terminal ride ${ride.id} conversation not CLOSED`,
+      );
+    }
+  }
+  const messages = await prisma.message.findMany({
+    where: { conversationId: c.id },
+  });
+  for (const m of messages) {
+    check(inEnum(m.type, MessageType), `message ${m.id} type unknown`);
+    check(inEnum(m.status, MessageStatus), `message ${m.id} status unknown`);
+    check(
+      [c.riderId, c.driverId].includes(m.senderId),
+      `message ${m.id} sender not a participant`,
+    );
+    check(
+      [c.riderId, c.driverId].includes(m.recipientId),
+      `message ${m.id} recipient not a participant`,
+    );
+    check(m.senderId !== m.recipientId, `message ${m.id} sender == recipient`);
+    check(m.content.trim().length > 0, `message ${m.id} empty`);
+    if (m.status === "SENT" && m.readAt === null) unreadSeeded += 1;
+  }
+}
+check(unreadSeeded > 0, "seed has no unread messages");
+check(
+  conversations.some((c) => c.status === "ACTIVE"),
+  "seed has no ACTIVE conversations",
+);
 
 await prisma.$disconnect();
 if (failures.length > 0) {

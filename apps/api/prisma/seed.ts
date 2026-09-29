@@ -75,6 +75,8 @@ const barangays = cebu.cities.flatMap((c) =>
 
 async function reset() {
   // Dependency order: children first. Dev database only.
+  await prisma.message.deleteMany();
+  await prisma.conversation.deleteMany();
   await prisma.ledgerTransaction.deleteMany();
   await prisma.rideEvent.deleteMany();
   await prisma.ride.deleteMany();
@@ -343,7 +345,11 @@ async function main() {
         Math.round(distanceKm * pricing.perKmCentavos[vtype]),
     );
     const roll = rand();
-    const terminal = roll < 0.82 ? RideStatus.COMPLETED : RideStatus.CANCELLED;
+    // First six rides stay live for dispatch/messaging demos.
+    const liveStatus =
+      i < 4 ? RideStatus.ASSIGNED : i < 6 ? RideStatus.IN_PROGRESS : null;
+    const terminal =
+      liveStatus ?? (roll < 0.82 ? RideStatus.COMPLETED : RideStatus.CANCELLED);
 
     const assignment = await prisma.driverVehicleAssignment.findFirst({
       where: { driverId: driver.id, isActive: true },
@@ -372,7 +378,9 @@ async function main() {
     const path =
       terminal === RideStatus.COMPLETED
         ? ridePath
-        : [RideStatus.REQUESTED, RideStatus.CANCELLED];
+        : terminal === RideStatus.CANCELLED
+          ? [RideStatus.REQUESTED, RideStatus.CANCELLED]
+          : ridePath.slice(0, ridePath.indexOf(terminal) + 1);
     for (let s = 0; s < path.length - 1; s += 1) {
       await prisma.rideEvent.create({
         data: {
@@ -438,10 +446,111 @@ async function main() {
   }
   await syncBalances();
 
+  // ---- Messaging (spec §31): conversations + realistic sequences ----
+  const RIDER_LINES = [
+    "Where are you?",
+    "I'm at the main entrance.",
+    "Running a bit late, sorry!",
+    "Can you wait 2 minutes?",
+    "I see you, walking over now.",
+  ];
+  const DRIVER_LINES = [
+    "I'm near the main entrance.",
+    "On my way, 3 minutes out.",
+    "No problem, I'll wait by the gate.",
+    "Okay, I'm here now.",
+  ];
+  const SYSTEM_BY_STATUS: Record<string, string[]> = {
+    ASSIGNED: ["Driver accepted the booking."],
+    IN_PROGRESS: ["Driver accepted the booking.", "Ride started."],
+    COMPLETED: [
+      "Driver accepted the booking.",
+      "Ride started.",
+      "Ride completed.",
+    ],
+    CANCELLED: ["Ride cancelled."],
+  };
+  const messagedRides = await prisma.ride.findMany({
+    where: { driverId: { not: null } },
+    orderBy: { requestedAt: "asc" },
+    take: 30,
+  });
+  let convoCount = 0;
+  let msgCount = 0;
+  const driverUserOf = new Map(drivers.map((d) => [d.id, d.userId]));
+  for (const [ri, r] of messagedRides.entries()) {
+    const driverUserId = driverUserOf.get(r.driverId!)!;
+    const terminal = r.status === "COMPLETED" || r.status === "CANCELLED";
+    const conversation = await prisma.conversation.create({
+      data: {
+        rideId: r.id,
+        riderId: r.riderId,
+        driverId: driverUserId,
+        status: terminal ? "CLOSED" : "ACTIVE",
+        closedAt: terminal ? new Date() : null,
+      },
+    });
+    convoCount += 1;
+    // Two conversations stay empty; the rest get a realistic exchange.
+    if (ri % 15 === 14) continue;
+    const systemTexts = SYSTEM_BY_STATUS[r.status] ?? [];
+    let n = 0;
+    const post = async (
+      senderId: string,
+      recipientId: string,
+      type: string,
+      content: string,
+      status: string,
+    ) => {
+      const msg = await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId,
+          recipientId,
+          type,
+          content,
+          status,
+        },
+      });
+      n += 1;
+      return msg;
+    };
+    let last: { id: string; createdAt: Date } | null = null;
+    for (const text of systemTexts) {
+      last = await post(driverUserId, r.riderId, "SYSTEM", text, "READ");
+    }
+    const rounds = 1 + (ri % 3);
+    for (let q = 0; q < rounds; q += 1) {
+      last = await post(
+        r.riderId,
+        driverUserId,
+        "TEXT",
+        RIDER_LINES[(ri + q) % RIDER_LINES.length],
+        "READ",
+      );
+      // Newest driver reply stays SENT (unread) on some conversations.
+      const unread = ri % 4 === 0 && q === rounds - 1;
+      last = await post(
+        driverUserId,
+        r.riderId,
+        "TEXT",
+        DRIVER_LINES[(ri + q) % DRIVER_LINES.length],
+        unread ? "SENT" : "READ",
+      );
+    }
+    if (last) {
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { lastMessageId: last.id, lastMessageAt: last.createdAt },
+      });
+    }
+    msgCount += n;
+  }
+
   const userCount = await prisma.user.count();
   const txnCount = await prisma.ledgerTransaction.count();
   console.log(
-    `seeded users=${userCount} rides=${RIDE_COUNT} transactions=${txnCount}`,
+    `seeded users=${userCount} rides=${RIDE_COUNT} transactions=${txnCount} conversations=${convoCount} messages=${msgCount}`,
   );
 }
 

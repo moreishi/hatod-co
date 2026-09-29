@@ -7,6 +7,8 @@ import { AppController } from "../src/app.controller.js";
 import { AuthController } from "../src/auth/auth.controller.js";
 import { AuthService } from "../src/auth/auth.service.js";
 import { RolesGuard } from "../src/auth/roles.guard.js";
+import { MessagingController } from "../src/messaging/messaging.controller.js";
+import { MessagingService } from "../src/messaging/messaging.service.js";
 import { NotificationsController } from "../src/notifications/notifications.controller.js";
 import { NotificationsService } from "../src/notifications/notifications.service.js";
 import { OnboardingController } from "../src/onboarding/onboarding.controller.js";
@@ -29,6 +31,8 @@ const INJECTABLES: Record<string, new (...args: never[]) => unknown> = {
   AuthController,
   AuthService,
   RolesGuard,
+  MessagingController,
+  MessagingService,
   NotificationsController,
   NotificationsService,
   OnboardingController,

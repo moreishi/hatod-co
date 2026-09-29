@@ -39,14 +39,24 @@ function serviceWith(db: Record<string, unknown>) {
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
-  const realtime = { broadcastRide: vi.fn() };
+  const realtime = { broadcastRide: vi.fn(), broadcastConversation: vi.fn() };
+  const messaging = {
+    ensureConversation: vi.fn().mockResolvedValue({}),
+    postSystemMessage: vi.fn().mockResolvedValue({}),
+    closeConversation: vi.fn().mockResolvedValue({}),
+  };
   const service = new RidesService(
     prisma,
     new RideTransitionGuard(),
     notifications as never,
     realtime as never,
+    messaging as never,
   );
-  return Object.assign(service, { sent: notifications, live: realtime });
+  return Object.assign(service, {
+    sent: notifications,
+    live: realtime,
+    chat: messaging,
+  });
 }
 
 const dto = {
@@ -79,9 +89,11 @@ describe("RidesService", () => {
     const mk = (driver: object) =>
       serviceWith({
         ride: {
-          findUniqueOrThrow: vi
-            .fn()
-            .mockResolvedValue({ id: "ride-1", status: "REQUESTED" }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({
+            id: "ride-1",
+            status: "REQUESTED",
+            riderId: "rider-1",
+          }),
           update: vi
             .fn()
             .mockImplementation((a: { data: object }) =>
@@ -95,6 +107,7 @@ describe("RidesService", () => {
       id: "d-1",
       agencyId: "ag-1",
       status: "ACTIVE",
+      user: { id: "u-driver", displayName: "D" },
       assignments: [{ vehicleId: "v-1" }],
     };
     const assignedSvc = mk(good);
@@ -114,6 +127,15 @@ describe("RidesService", () => {
         rideId: "ride-1",
         status: RideStatus.ASSIGNED,
       }),
+    );
+    expect(assignedSvc.chat.ensureConversation).toHaveBeenCalledWith(
+      "ride-1",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(assignedSvc.chat.postSystemMessage).toHaveBeenCalledWith(
+      "ride-1",
+      "ASSIGNED",
     );
 
     const suspended = { ...good, status: "SUSPENDED" };
