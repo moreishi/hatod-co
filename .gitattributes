@@ -1,2 +1,4 @@
-# Normalize line endings across Windows/macOS/Linux teammates
-* text=auto
+# Normalize line endings across Windows/macOS/Linux teammates.
+# eol=lf keeps working copies LF on every OS, so prettier --check is stable
+# and `git status` stays clean without per-clone normalization runs.
+* text=auto eol=lf
