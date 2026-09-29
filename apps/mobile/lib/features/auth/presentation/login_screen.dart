@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import '../data/auth_repository.dart';
+import '../domain/session.dart';
+import 'session_scope.dart';
 
-/// OTP login (mobile spec §11–12). Wire to AuthRepository in the next slice.
+/// OTP login wired to the real backend (mobile spec §11–12).
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final void Function(Session session)? onAuthenticated;
+
+  const LoginScreen({super.key, this.onAuthenticated});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -11,7 +16,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   final _code = TextEditingController();
-  bool _sent = false;
+  String? _challengeId;
+  String? _devCode;
+  String? _error;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -20,8 +28,46 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  AuthRepository get _auth => SessionScope.of(context);
+
+  Future<void> _request() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final challenge = await _auth.requestOtp(_phone.text.trim());
+      setState(() {
+        _challengeId = challenge.challengeId;
+        _devCode = challenge.devCode;
+      });
+    } catch (e) {
+      setState(() => _error = 'Could not send code. Please try again.');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _verify() async {
+    final challengeId = _challengeId;
+    if (challengeId == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final session = await _auth.verifyOtp(challengeId, _code.text.trim());
+      widget.onAuthenticated?.call(session);
+    } catch (_) {
+      setState(() => _error = 'Invalid code. Please try again.');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    const input = InputDecoration();
     return Scaffold(
       appBar: AppBar(title: const Text('Hailing')),
       body: Padding(
@@ -29,15 +75,15 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!_sent) ...[
+            if (_challengeId == null) ...[
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone number'),
+                decoration: input.copyWith(labelText: 'Phone number'),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => setState(() => _sent = true),
+                onPressed: _busy ? null : _request,
                 child: const Text('Send code'),
               ),
             ] else ...[
@@ -45,10 +91,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _code,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
-                decoration: const InputDecoration(labelText: 'One-time code'),
+                decoration: input.copyWith(labelText: 'One-time code'),
               ),
+              if (_devCode != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('LocalStage code: $_devCode',
+                      key: const Key('devCode')),
+                ),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: () {}, child: const Text('Verify')),
+              ElevatedButton(
+                onPressed: _busy ? null : _verify,
+                child: const Text('Verify'),
+              ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: Colors.red)),
             ],
           ],
         ),
