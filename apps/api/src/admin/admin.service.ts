@@ -133,14 +133,6 @@ export class AdminService {
     });
   }
 
-  /** Sensitive admin/financial operations trail (spec rule 53). */
-  async listAuditLogs() {
-    return this.prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
-  }
-
   /**
    * Read-only support inspection of a conversation (messaging spec §22).
    * Audited; message content is never written to the audit row.
