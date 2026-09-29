@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { canManageDriver, canOffboard, filterDrivers, validateDriver } from "./driverRules";
+import {
+  DEFAULT_AGENCY_ID,
+  agencyDisplayName,
+  canManageDriver,
+  canOffboard,
+  filterDrivers,
+  validateDriver,
+} from "./driverRules";
+import { createDriver } from "./drivers";
 import type { Driver } from "./types";
 
 function driver(over: Partial<Driver> = {}): Driver {
@@ -57,6 +65,34 @@ describe("canOffboard (history is sacred)", () => {
     const blocked = canOffboard(3);
     expect(blocked.ok).toBe(false);
     expect(blocked.reason).toMatch(/trip history/i);
+  });
+});
+
+describe("default agency (every driver has an owner)", () => {
+  it("pins a stable system id", () => {
+    expect(DEFAULT_AGENCY_ID).toBe("usr-agency-default");
+  });
+
+  it("prefers the business name, falls back to the account name", () => {
+    expect(agencyDisplayName("Aya Agency", "Gensan Fleet Co")).toBe("Gensan Fleet Co");
+    expect(agencyDisplayName("Aya Agency", null)).toBe("Aya Agency");
+  });
+
+  it("rejects agency-less onboarding", async () => {
+    await expect(
+      createDriver(
+        {
+          name: "No Owner",
+          phone: "09170001111",
+          vehicleType: "moto",
+          plateNo: "X-1",
+          paExpiry: "2027-01-01",
+          cpcExpiry: "2027-06-01",
+          licenseNo: "L",
+        },
+        null,
+      ),
+    ).rejects.toThrow(/agency/i);
   });
 });
 

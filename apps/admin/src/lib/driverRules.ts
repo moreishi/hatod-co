@@ -4,6 +4,14 @@ import type { Role } from "./access";
 import { normalizePhPhone } from "./phone";
 import type { Driver } from "./types";
 
+/** System agency that owns directly-onboarded (orphan) drivers. */
+export const DEFAULT_AGENCY_ID = "usr-agency-default";
+
+/** What a driver sees: business name when approved, else the account name. */
+export function agencyDisplayName(accountName: string, businessName: string | null): string {
+  return businessName?.trim() ? businessName : accountName;
+}
+
 // Pure driver rules (client- + edge-safe): no node:* / DB imports.
 // Repository functions live in ./drivers (server-only).
 

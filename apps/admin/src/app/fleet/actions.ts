@@ -54,7 +54,7 @@ export async function setFleetDriverStatusAction(id: string, status: DriverStatu
   revalidatePath("/fleet/drivers");
 }
 
-/** Create a login for a fleet driver. Returns one-time credentials to relay. */
+/** Create a login for a fleet driver (OTP sign-in on their number). */
 export async function createDriverLoginAction(id: string, email?: string) {
   const a = await actor();
   const d = await getDriver(id);
