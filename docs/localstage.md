@@ -12,11 +12,15 @@ pnpm --filter @hailing/api run prisma:validate        # spec rules 26-30
 pnpm dev                                              # turbo: api :3001, agency :3002, worker
 ```
 
-| Service | URL                              |
-| ------- | -------------------------------- |
-| API     | http://localhost:3001/api        |
-| Health  | http://localhost:3001/api/health |
-| Agency  | http://localhost:3002            |
+| Service | URL                                                                     |
+| ------- | ----------------------------------------------------------------------- |
+| API     | http://localhost:3001/api                                               |
+| Health  | http://localhost:3001/api/health                                        |
+| Admin   | http://localhost:3000 (`@hailing/admin`; login `0917100000` + dev code) |
+| Agency  | http://localhost:3002                                                   |
+
+> Legacy `apps/admin-legacy` also uses `:3000` — run one admin at a time
+> (`npm install` there first; its `node_modules` did not survive the move).
 
 ## With Docker (LocalStage full stack)
 
