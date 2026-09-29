@@ -53,6 +53,31 @@ docker compose -f infrastructure/docker-compose.yml up --build
 | `0917100011`–`0917100026`   | ACTIVE drivers                               | —              |
 | `0917100031`–`0917100046`   | riders                                       | —              |
 
+## Simulator (virtual riders/drivers, Phase 1)
+
+Exercises the real API — never production (it needs OTP dev codes).
+
+```powershell
+# terminal 1: backend with seeded dev data
+pnpm --filter @hailing/api exec prisma migrate dev
+pnpm --filter @hailing/api run prisma:seed
+pnpm --filter @hailing/api run dev      # :3001
+
+# terminal 2: scenarios (normal_ride, driver_reject, cancel_before_accept)
+pnpm --filter @hailing/simulator exec tsx src/index.ts normal_ride
+pnpm --filter @hailing/simulator exec tsx src/index.ts driver_reject --seed 42
+$env:SIM_SPEED="10"; pnpm --filter @hailing/simulator exec tsx src/index.ts normal_ride
+```
+
+Config via env (defaults shown): `SIM_API_URL` (`http://localhost:3001`),
+`SIM_RIDERS` (`09200000005,09200000006`), `SIM_DRIVERS` (`09200000004`),
+`SIM_DISPATCHER` (`09200000003`), `SIM_SCENARIO`, `SIM_SEED` (`42`),
+`SIM_SPEED` (`1`). Against the dev seed use `09171...` phones instead
+(rider `0917100031`, driver `0917100011`, dispatcher `0917100005`).
+
+Each run prints a JSON summary (`scenario`, `rideId`, `events`,
+`chatMessages`, `wsEvents`, `ms`) plus the timestamped event log.
+
 ## Loop (every change)
 
 ```powershell
