@@ -215,4 +215,90 @@ export const SCENARIOS: Record<
   normal_ride: normalRide,
   cancel_before_accept: cancelBeforeAccept,
   driver_reject: driverReject,
+  chat_reconnect: chatReconnect,
+  message_retry: messageRetry,
 };
+
+/** Driver drops WS mid-chat; rider's message waits; driver reconnects and syncs. */
+export async function chatReconnect(ctx: SimContext): Promise<ScenarioResult> {
+  const [riderPhone, driverPhone] = [
+    ctx.config.riderPhones[0],
+    ctx.config.driverPhones[0],
+  ];
+  const { rider, driver, dispatcherToken } = await setupPair(
+    ctx,
+    riderPhone,
+    driverPhone,
+  );
+  try {
+    const rideId = await rider.runRide("chat_reconnect");
+    await assignDriver(ctx, dispatcherToken, rideId, driverPhone);
+    const convo = await driver.awaitAssignment();
+    if (!convo) throw new Error("driver never saw the assignment");
+    await driver.acceptCurrentRide(rideId);
+    driver.disconnectWs();
+    driver.note("ws-dropped");
+    await rider.chat(convo.id, 1, `reconnect-${rideId}`);
+    // Reconnect: fresh socket, then synchronize missed messages as DELIVERED.
+    driver.connectWs();
+    await sleep(scaledMs(1, ctx.config.speed));
+    const driverToken = await ctx.api.login(driverPhone);
+    const synced = await fetch(
+      `${ctx.config.apiUrl}/api/conversations/${convo.id}/delivered`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${driverToken}`,
+        },
+      },
+    );
+    if (!synced.ok) throw new Error(`sync failed: ${synced.status}`);
+    driver.note("messages.synced", convo.id);
+    return summarize("chat_reconnect", rideId, ctx, rider, driver);
+  } finally {
+    rider.disconnectWs();
+    await driver.goOffline().catch(() => undefined);
+  }
+}
+
+/** Same clientMessageId sent twice yields one stored message. */
+export async function messageRetry(ctx: SimContext): Promise<ScenarioResult> {
+  const [riderPhone, driverPhone] = [
+    ctx.config.riderPhones[0],
+    ctx.config.driverPhones[0],
+  ];
+  const { rider, driver, dispatcherToken } = await setupPair(
+    ctx,
+    riderPhone,
+    driverPhone,
+  );
+  try {
+    const rideId = await rider.runRide("message_retry");
+    await assignDriver(ctx, dispatcherToken, rideId, driverPhone);
+    const convo = await driver.awaitAssignment();
+    if (!convo) throw new Error("driver never saw the assignment");
+    await driver.acceptCurrentRide(rideId);
+    const riderToken = await ctx.api.login(riderPhone);
+    const post = () =>
+      fetch(`${ctx.config.apiUrl}/api/conversations/${convo.id}/messages`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${riderToken}`,
+        },
+        body: JSON.stringify({
+          content: "retry me",
+          clientMessageId: `retry-${rideId}`,
+        }),
+      }).then((r) => r.json()) as Promise<{ id: string }>;
+    const first = await post();
+    const second = await post();
+    if (first.id !== second.id) throw new Error("duplicate not deduped");
+    rider.note("retry.deduped", first.id);
+    return summarize("message_retry", rideId, ctx, rider, driver);
+  } finally {
+    rider.disconnectWs();
+    await driver.goOffline().catch(() => undefined);
+  }
+}

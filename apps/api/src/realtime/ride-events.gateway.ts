@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -8,6 +9,26 @@ import type { Server, Socket } from "socket.io";
 import type { RideStatus } from "@hailing/constants";
 import { TokenService } from "../auth/token.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+
+export const MESSAGING_SERVICE = "MESSAGING_SERVICE";
+
+/**
+ * Structural port the gateway needs. Implemented by MessagingService and
+ * bound via the MESSAGING_SERVICE token so this module never imports the
+ * messaging module (which would be a load-time cycle).
+ */
+export interface MessagingPort {
+  sendMessage(
+    conversationId: string,
+    senderId: string,
+    dto: { type: "TEXT"; content: string; clientMessageId?: string },
+  ): Promise<{ id: string }>;
+  markDelivered(
+    conversationId: string,
+    userId: string,
+  ): Promise<{ delivered: number }>;
+  markRead(conversationId: string, userId: string): Promise<{ read: number }>;
+}
 
 export interface RideBroadcast {
   rideId: string;
@@ -44,7 +65,13 @@ export class RideEventsGateway {
   constructor(
     @Inject(TokenService) private readonly tokens: TokenService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
+
+  /** Messaging port resolved lazily: no module cycle with MessagingModule. */
+  private get messaging(): MessagingPort {
+    return this.moduleRef.get(MESSAGING_SERVICE, { strict: false });
+  }
 
   handleConnection(client: Socket) {
     const session = this.authenticate(client);
@@ -107,6 +134,56 @@ export class RideEventsGateway {
     ) {
       void client.join(`agency:${agencyId}`);
     }
+  }
+
+  /** Send a chat message over the socket (same domain logic as HTTP POST). */
+  @SubscribeMessage("message.send")
+  async handleMessageSend(
+    client: Socket,
+    payload: {
+      conversationId?: string;
+      content?: string;
+      clientMessageId?: string;
+    },
+  ) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId || typeof payload?.conversationId !== "string") {
+      return { ok: false, message: "unauthorized" };
+    }
+    try {
+      const message = await this.messaging.sendMessage(
+        payload.conversationId,
+        userId,
+        {
+          type: "TEXT",
+          content: payload.content ?? "",
+          clientMessageId: payload.clientMessageId,
+        },
+      );
+      return { ok: true, messageId: (message as { id: string }).id };
+    } catch (e) {
+      return {
+        ok: false,
+        message: e instanceof Error ? e.message : "send failed",
+      };
+    }
+  }
+
+  /** Sync receipts after reconnect (spec §14). */
+  @SubscribeMessage("message.delivered")
+  async handleMessageDelivered(client: Socket, conversationId: string) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId || typeof conversationId !== "string") return { ok: false };
+    const result = await this.messaging.markDelivered(conversationId, userId);
+    return { ok: true, ...result };
+  }
+
+  @SubscribeMessage("message.read")
+  async handleMessageRead(client: Socket, conversationId: string) {
+    const userId = client.data.userId as string | undefined;
+    if (!userId || typeof conversationId !== "string") return { ok: false };
+    const result = await this.messaging.markRead(conversationId, userId);
+    return { ok: true, ...result };
   }
 
   /** Join a conversation room after verifying participant membership. */
