@@ -59,12 +59,15 @@ export function BookingForm() {
     setBusy(true);
     setError(null);
     try {
+      const origin = LANDMARKS[pickup] ?? { lat: 10.3157, lng: 123.8854 };
       const res = await fetch("/api/rides/request", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           pickupLabel: pickup,
           pickupBrgyCode: "072217001",
+          pickupLat: origin.lat,
+          pickupLng: origin.lng,
           dropoffLabel: dropoff,
           dropoffBrgyCode: "072217002",
           distanceKm: quote?.distanceKm ?? 5,

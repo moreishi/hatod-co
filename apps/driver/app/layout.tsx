@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <span className="font-bold text-brand-900">Hailing Driver</span>
             <Link
               href="/"
+              prefetch={false}
               className="text-sm text-slate-600 hover:text-brand-700"
             >
               Home

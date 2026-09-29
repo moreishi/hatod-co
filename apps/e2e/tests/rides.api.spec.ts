@@ -120,4 +120,65 @@ test("riders cannot touch each other's rides", async ({ request }) => {
     },
   );
   expect(forbidden.status()).toBe(403);
+
+  // Free the driver for later tests.
+  await request.post(`${API}/api/rides/${ride.id}/transition`, {
+    data: { to: "CANCELLED", cancelReason: "e2e cleanup" },
+    headers: auth(riderA),
+  });
+});
+
+test("requests auto-match to nearby online drivers", async ({ request }) => {
+  const driver = await login(request, "09200000004");
+  await request.post(`${API}/api/drivers/me/online`, {
+    data: { online: true },
+    headers: auth(driver),
+  });
+  await request.post(`${API}/api/drivers/me/location`, {
+    data: { lat: 10.3181, lng: 123.9054 },
+    headers: auth(driver),
+  });
+  const rider = await login(request, "09200000005");
+  const created = await request.post(`${API}/api/rides`, {
+    data: {
+      ...RIDE,
+      pickupLat: 10.3185,
+      pickupLng: 123.906,
+    },
+    headers: auth(rider),
+  });
+  const ride = await created.json();
+  let offers: { rideId: string }[] = [];
+  for (let i = 0; i < 20 && offers.length === 0; i += 1) {
+    await new Promise((r) => setTimeout(r, 500));
+    offers = (await (
+      await request.get(`${API}/api/drivers/me/offers`, {
+        headers: auth(driver),
+      })
+    ).json()) as { rideId: string }[];
+  }
+  expect(offers.length).toBeGreaterThan(0);
+  const accepted = await request.post(
+    `${API}/api/drivers/me/offers/${ride.id}/accept`,
+    { headers: auth(driver) },
+  );
+  expect(accepted.ok()).toBe(true);
+  expect(((await accepted.json()) as { status: string }).status).toBe(
+    "ASSIGNED",
+  );
+
+  const far = await request.post(`${API}/api/rides`, {
+    data: { ...RIDE, pickupLat: -6.0, pickupLng: 106.0 },
+    headers: auth(rider),
+  });
+  const farRide = await far.json();
+  let farStatus = "";
+  for (let i = 0; i < 20 && farStatus !== "NO_DRIVERS"; i += 1) {
+    await new Promise((r) => setTimeout(r, 500));
+    const fetched = await request.get(`${API}/api/rides/${farRide.id}`, {
+      headers: auth(rider),
+    });
+    farStatus = ((await fetched.json()) as { status: string }).status;
+  }
+  expect(farStatus).toBe("NO_DRIVERS");
 });

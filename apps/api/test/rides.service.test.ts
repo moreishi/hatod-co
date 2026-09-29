@@ -49,17 +49,23 @@ function serviceWith(db: Record<string, unknown>) {
     closeConversation: vi.fn().mockResolvedValue({}),
     deleteConversation: vi.fn().mockResolvedValue({}),
   };
+  const matching = {
+    matchRide: vi.fn().mockResolvedValue(null),
+    cancelOffers: vi.fn(),
+  };
   const service = new RidesService(
     prisma,
     new RideTransitionGuard(),
     notifications as never,
     realtime as never,
     messaging as never,
+    matching as never,
   );
   return Object.assign(service, {
     sent: notifications,
     live: realtime,
     chat: messaging,
+    match: matching,
   });
 }
 

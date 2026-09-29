@@ -31,7 +31,7 @@ export const RideTransitions: Record<RideStatus, readonly RideStatus[]> = {
   IN_PROGRESS: [RideStatus.COMPLETED],
   COMPLETED: [],
   CANCELLED: [],
-  NO_DRIVERS: [RideStatus.REQUESTED, RideStatus.CANCELLED],
+  NO_DRIVERS: [RideStatus.REQUESTED, RideStatus.ASSIGNED, RideStatus.CANCELLED],
 };
 
 /** Driver account lifecycle. Creation ≠ dispatchable (spec rule 36). */
@@ -161,3 +161,9 @@ export const MAX_MESSAGES_PER_MINUTE = 20;
 export const MAX_MESSAGES_PER_CONVERSATION_PER_MINUTE = 30;
 export const MESSAGE_RETENTION_DAYS = 365;
 export const CLOSED_CONVERSATION_RETENTION_DAYS = 90;
+
+/** Matching engine tuning (routing spec §12–§14). */
+export const MATCH_RADIUS_KM = 5;
+export const MATCH_MAX_CANDIDATES = 5;
+export const MATCH_OFFER_TIMEOUT_SEC = 30;
+export const PING_FRESH_SEC = 120;

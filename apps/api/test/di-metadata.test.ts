@@ -5,6 +5,7 @@ import { AgenciesController } from "../src/agencies/agencies.controller.js";
 import { AgenciesService } from "../src/agencies/agencies.service.js";
 import { DriversController } from "../src/drivers/drivers.controller.js";
 import { LocationService } from "../src/location/location.service.js";
+import { MatchingService } from "../src/matching/matching.service.js";
 import { AppController } from "../src/app.controller.js";
 import { AuthController } from "../src/auth/auth.controller.js";
 import { AuthService } from "../src/auth/auth.service.js";
@@ -31,6 +32,7 @@ const INJECTABLES: Record<string, new (...args: never[]) => unknown> = {
   AgenciesService,
   DriversController,
   LocationService,
+  MatchingService,
   AppController,
   AuthController,
   AuthService,
