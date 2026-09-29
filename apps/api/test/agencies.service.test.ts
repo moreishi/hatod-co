@@ -3,12 +3,15 @@ import { AgenciesService } from "../src/agencies/agencies.service.js";
 import type { PrismaService } from "../src/prisma/prisma.service.js";
 import type { Requester } from "../src/onboarding/onboarding.service.js";
 
-function serviceWith(db: Record<string, unknown>) {
+function serviceWith(db: Record<string, unknown>, location?: object) {
   const prisma = {
     ...db,
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
-  return new AgenciesService(prisma);
+  return new AgenciesService(
+    prisma,
+    (location ?? { nearby: vi.fn().mockResolvedValue([]) }) as never,
+  );
 }
 
 const owner: Requester = {

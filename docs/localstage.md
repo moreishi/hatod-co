@@ -18,7 +18,9 @@ pnpm dev                                              # turbo: api :3001, agency
 | API     | http://localhost:3001/api                                               |
 | Health  | http://localhost:3001/api/health                                        |
 | Admin   | http://localhost:3000 (`@hailing/admin`; login `0917100000` + dev code) |
-| Agency  | http://localhost:3002                                                   |
+| Agency  | http://localhost:3002      |
+| Rider   | http://localhost:3004 (`@hailing/rider`; login `0917100031` + dev code) |
+| Driver  | http://localhost:3005 (`@hailing/driver`; login `0917100011` + dev code) |
 
 ## With Docker (LocalStage full stack)
 

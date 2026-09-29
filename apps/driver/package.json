@@ -1,0 +1,29 @@
+{
+  "name": "@hailing/driver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rider portal — book, track, chat (mobile spec adapted to web)",
+  "scripts": {
+    "dev": "next dev --port 3005",
+    "build": "next build",
+    "start": "next start --port 3005",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check \"app/**/*.ts\" \"app/**/*.tsx\" \"app/**/*.css\" \"lib/**/*.ts\" \"next.config.ts\" \"proxy.ts\" \"*.mjs\" \"*.json\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hailing/constants": "workspace:*",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

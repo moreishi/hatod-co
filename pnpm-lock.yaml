@@ -261,6 +261,9 @@ importers:
       '@hailing/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
+      '@hailing/routing':
+        specifier: workspace:*
+        version: link:../../packages/routing
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.2.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -314,6 +317,43 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)
 
+  apps/driver:
+    dependencies:
+      '@hailing/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
+      next:
+        specifier: ^16.0.0
+        version: 16.3.6(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.0.0
+        version: 4.3.3
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.4
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)
+
   apps/e2e:
     devDependencies:
       '@playwright/test':
@@ -331,6 +371,43 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+
+  apps/rider:
+    dependencies:
+      '@hailing/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
+      next:
+        specifier: ^16.0.0
+        version: 16.3.6(@playwright/test@1.63.0)(@types/node@22.20.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.0.0
+        version: 4.3.3
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.4
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.3.0(@types/react@19.3.0)
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)
 
   apps/simulator:
     dependencies:
@@ -402,6 +479,15 @@ importers:
       '@hailing/constants':
         specifier: workspace:*
         version: link:../constants
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.15)
+
+  packages/routing:
+    devDependencies:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

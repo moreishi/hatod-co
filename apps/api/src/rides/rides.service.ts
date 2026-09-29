@@ -13,6 +13,7 @@ import { RideTransitionGuard } from "./ride-transition.guard.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
 import { MessagingService } from "../messaging/messaging.service.js";
 import { RideEventsGateway } from "../realtime/ride-events.gateway.js";
+import { RoutingService, type LatLng } from "@hailing/routing";
 import { pricing } from "@hailing/data";
 
 export interface RequestRideDto {
@@ -29,6 +30,8 @@ const PLATFORM_WALLET_ID = "platform";
 
 @Injectable()
 export class RidesService {
+  private readonly routing = new RoutingService();
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(RideTransitionGuard) private readonly guard: RideTransitionGuard,
@@ -38,8 +41,27 @@ export class RidesService {
     @Inject(MessagingService) private readonly messaging: MessagingService,
   ) {}
 
-  /** Rider requests a ride → REQUESTED with an upfront quoted fare. */
-  async requestRide(riderId: string, dto: RequestRideDto) {
+  /** Upfront quote from real coordinates (routing spec §35: separated from booking). */
+  async quoteFare(
+    origin: LatLng,
+    destination: LatLng,
+    vehicleType: VehicleType,
+  ) {
+    const route = await this.routing.calculateRoute(origin, destination, {
+      vehicleType,
+    });
+    return {
+      ...quoteFare({ vehicleType, distanceKm: route.distanceKm }),
+      distanceKm: route.distanceKm,
+      durationSec: route.durationSec,
+      provider: route.provider,
+    };
+  }
+
+  /** Rider requests a ride → REQUESTED with an upfront quoted fare. */ async requestRide(
+    riderId: string,
+    dto: RequestRideDto,
+  ) {
     const { fareCentavos } = quoteFare({
       vehicleType: dto.vehicleType,
       distanceKm: dto.distanceKm,
@@ -364,5 +386,25 @@ export class RidesService {
       orderBy: { requestedAt: "desc" },
       take: 50,
     });
+  }
+
+  /** Rides where the user is the rider, plus ones assigned to their driver profile. */
+  async myRides(userId: string) {
+    const driver = await this.prisma.driver.findUnique({ where: { userId } });
+    const [asRider, asDriver] = await Promise.all([
+      this.prisma.ride.findMany({
+        where: { riderId: userId },
+        orderBy: { requestedAt: "desc" },
+        take: 25,
+      }),
+      driver
+        ? this.prisma.ride.findMany({
+            where: { driverId: driver.id },
+            orderBy: { requestedAt: "desc" },
+            take: 25,
+          })
+        : Promise.resolve([]),
+    ]);
+    return { asRider, asDriver };
   }
 }

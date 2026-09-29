@@ -5,23 +5,26 @@ event-driven internals; the full blueprint is `HAILING_PROJECT_SPECIFICATION.md`
 
 ## Stack
 
-| Layer         | Choice                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| API           | NestJS 11 + Prisma (`apps/api`, `:3001`)                                                    |
-| Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                           |
-| Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                          |
-| Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                         |
-| Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phases 1-2)                     |
-| E2E           | Playwright suite on an isolated stack (`apps/e2e`, ports 3100–3102)                         |
-| Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications`        |
-| Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                                |
-| Rides         | Request → assign → accept/reject → en route → arrived → in progress → completed/cancelled   |
-| Messaging     | One conversation per ride, TEXT/SYSTEM, SENT/DELIVERED/READ, idempotent sends, rate-limited |
-| Realtime      | Socket.io gateway (`/realtime`, token-authed rooms for rides, agencies, conversations)      |
-| DB dev        | SQLite LocalStage (`apps/api/prisma/dev.db`, Prisma migrations + seed)                      |
-| DB prod       | Postgres 16 + PostGIS (Coolify; see `infrastructure/`)                                      |
-| Realtime      | Socket.io gateway (`/realtime`); Redis adapter in production                                |
-| Money         | Wallets + double-entry ledger (centavos); cash + wallet payments                            |
+| Layer         | Choice                                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| API           | NestJS 11 + Prisma (`apps/api`, `:3001`)                                                                 |
+| Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                                        |
+| Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                                       |
+| Rider portal  | Next.js 16 LTS + Tailwind (`apps/rider`, `:3004`)                                                        |
+| Driver portal | Next.js 16 LTS + Tailwind (`apps/driver`, `:3005`)                                                       |
+| Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                                      |
+| Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phases 1-2)                                  |
+| E2E           | Playwright suite on an isolated stack (`apps/e2e`, ports 3100–3102)                                      |
+| Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications`, `@hailing/routing` |
+| Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                                             |
+| Rides         | Request → assign → accept/reject → en route → arrived → in progress → completed/cancelled                |
+| Messaging     | One conversation per ride, TEXT/SYSTEM, SENT/DELIVERED/READ, idempotent sends, rate-limited              |
+| Realtime      | Socket.io gateway (`/realtime`, token-authed rooms for rides, agencies, conversations)                   |
+| Routing       | Provider abstraction + local haversine (Valhalla/GrabMaps adapters later); driver pings + proximity      |
+| DB dev        | SQLite LocalStage (`apps/api/prisma/dev.db`, Prisma migrations + seed)                                   |
+| DB prod       | Postgres 16 + PostGIS (Coolify; see `infrastructure/`)                                                   |
+| Realtime      | Socket.io gateway (`/realtime`); Redis adapter in production                                             |
+| Money         | Wallets + double-entry ledger (centavos); cash + wallet payments                                         |
 
 ## Quickstart (no Docker)
 
@@ -50,8 +53,8 @@ docker compose -f infrastructure/docker-compose.yml up --build
 | `0917100001` / `0917100002` | OPS / FINANCE_ADMIN                          | admin `:3000`  |
 | `0917100004`–`0917100006`   | Queen City Wheels OWNER/DISPATCHER/FINANCE   | agency `:3002` |
 | `0917100008`–`0917100010`   | Mactan Island Rides OWNER/DISPATCHER/FINANCE | agency `:3002` |
-| `0917100011`–`0917100026`   | ACTIVE drivers                               | —              |
-| `0917100031`–`0917100046`   | riders                                       | —              |
+| `0917100011`–`0917100026`   | ACTIVE drivers                               | driver `:3005` |
+| `0917100031`–`0917100046`   | riders                                       | rider `:3004`  |
 
 ## Simulator (virtual riders/drivers, Phases 1–2)
 
@@ -98,6 +101,8 @@ changes. CI runs the same on every push/PR, including the E2E suite.
 apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, notifications, realtime, messaging)
 apps/admin/      Platform admin portal (session, rides, finance, admins/invites, audit)
 apps/agency/     Agency portal (home, driver board, dispatch, documents, fleet)
+apps/rider/      Rider portal (book with fare quote, my rides, ride detail + chat)
+apps/driver/     Driver portal (online toggle, assignments, actions, chat)
 apps/worker/     Notification outbox consumer + retention purge
 apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept, chat_reconnect, message_retry)
 apps/e2e/        Playwright specs on isolated ports + database
