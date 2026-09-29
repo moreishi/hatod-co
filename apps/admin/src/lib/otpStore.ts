@@ -46,12 +46,12 @@ export async function requestOtp(rawPhone: string): Promise<{ retryAfterS?: numb
   const code = buildOtp();
   const now = new Date();
   const expires = new Date(now.getTime() + OTP_TTL_MS).toISOString();
-  // Resend replaces: upsert by phone.
+  // Resend replaces: upsert by phone (distinct $n per slot — see checkBindings).
   await queryDb(
     `INSERT INTO otp_codes (phone, code_hash, expires_at, attempts, requested_at)
      VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (phone) DO UPDATE SET code_hash = $2, expires_at = $3, attempts = 0, requested_at = $5`,
-    [phone, hashCode(code), expires, 0, now.toISOString()],
+     ON CONFLICT (phone) DO UPDATE SET code_hash = $6, expires_at = $7, attempts = 0, requested_at = $8`,
+    [phone, hashCode(code), expires, 0, now.toISOString(), hashCode(code), expires, now.toISOString()],
   );
   await getSms().send(phone, code);
   return {};
