@@ -1,11 +1,13 @@
 import { canGoOnline } from "./compliance";
 import { normalizePhPhone } from "./phone";
-import { canOffboard, validateDriver } from "./driverRules";
+import { agencyDisplayName, canOffboard, validateDriver } from "./driverRules";
 import { insertQuery } from "./repo";
 import { queryDb } from "./db";
 import type { Driver, DriverStatus, VehicleType } from "./types";
 
 export {
+  DEFAULT_AGENCY_ID,
+  agencyDisplayName,
   canManageDriver,
   canOffboard,
   filterDrivers,
@@ -33,13 +35,15 @@ function rowToDriver(row: Record<string, unknown>): Driver {
     updatedAt: new Date(row.updated_at as string).toISOString(),
     agencyUserId: (row.agency_user_id as string) ?? null,
     userId: (row.user_id as string) ?? null,
+    agencyName: row.agency_name == null ? null : String(row.agency_name),
   };
 }
 
 const DRIVER_COLS = `d.id, d.name, d.phone, d.vehicle_type, d.plate_no, d.status,
   d.pa_expiry, d.cpc_expiry, d.license_no, d.agency_user_id, d.user_id, d.updated_at,
-  l.lat, l.lng`;
-const DRIVER_FROM = `drivers d LEFT JOIN drivers_live l ON l.driver_id = d.id`;
+  l.lat, l.lng, u.name AS agency_name`;
+const DRIVER_FROM = `drivers d LEFT JOIN drivers_live l ON l.driver_id = d.id
+  LEFT JOIN users u ON u.id = d.agency_user_id`;
 
 export async function listDrivers(filter?: { agencyUserId?: string }): Promise<Driver[]> {
   const rows =
@@ -72,11 +76,34 @@ export async function getDriverByUser(userId: string): Promise<Driver | null> {
   return rows.length > 0 ? rowToDriver(rows[0]) : null;
 }
 
-/** Onboard a driver under an agency (or direct when agencyUserId is null). */
+export interface DriverAgency {
+  agencyUserId: string;
+  displayName: string;
+}
+
+/** The agency a driver belongs to (account name, business name when approved). */
+export async function getDriverAgency(driverId: string): Promise<DriverAgency | null> {
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT d.agency_user_id, u.name AS agency_name, a.business_name FROM drivers d
+     LEFT JOIN users u ON u.id = d.agency_user_id
+     LEFT JOIN agency_applications a ON a.user_id = d.agency_user_id AND a.status = 'approved'
+     WHERE d.id = $1`,
+    [driverId],
+  );
+  const row = rows[0];
+  if (!row || row.agency_user_id == null) return null;
+  return {
+    agencyUserId: String(row.agency_user_id),
+    displayName: agencyDisplayName(String(row.agency_name ?? "?"), row.business_name == null ? null : String(row.business_name)),
+  };
+}
+
+/** Onboard a driver — always under an agency (default agency for direct ops intake). */
 export async function createDriver(
   input: unknown,
   agencyUserId: string | null,
 ): Promise<Driver> {
+  if (!agencyUserId) throw new Error("driver requires an agency — use the default agency for direct intake");
   const clean = validateDriver(input);
   const id = `drv-${Date.now()}`;
   const q = insertQuery(

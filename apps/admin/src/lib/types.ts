@@ -27,6 +27,8 @@ export interface Driver {
   updatedAt: string;
   /** Owning agency account (users.id) — null for directly-onboarded drivers. */
   agencyUserId?: string | null;
+  /** Owning agency display name (joined where available). */
+  agencyName?: string | null;
   /** Login account (users.id) — null until a login is created. */
   userId?: string | null;
 }

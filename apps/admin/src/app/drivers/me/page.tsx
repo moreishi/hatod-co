@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isStaff, type Role } from "@/lib/access";
 import { getDriverByUser } from "@/lib/drivers";
+import { getDriverAgency } from "@/lib/drivers";
 import { listDriverTrips } from "@/lib/ledger";
 import { getActiveTrip, listOpenOffers } from "@/lib/trips";
 import { DriverHome } from "./home";
@@ -17,11 +18,12 @@ export default async function DriverMePage() {
   const profile = u?.id ? await getDriverByUser(u.id) : null;
   if (!profile) redirect("/no-access");
   const trips = await listDriverTrips(profile.id);
+  const agency = await getDriverAgency(profile.id);
   const active = await getActiveTrip(profile.id);
   const offers = active ? [] : await listOpenOffers();
   return (
     <div className="flex flex-col gap-4">
-      <DriverHome profile={profile} />
+      <DriverHome profile={profile} agencyName={agency?.displayName ?? null} />
       <TripWork active={active} offers={offers} />
       <EarningsSection trips={trips} />
     </div>

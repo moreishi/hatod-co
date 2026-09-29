@@ -5,7 +5,13 @@ import type { Driver } from "@/lib/types";
 import { Badge, Btn, Card, PageHeader } from "../../ui";
 import { setMyStatusAction } from "./actions";
 
-export function DriverHome({ profile }: { profile: Driver }) {
+export function DriverHome({
+  profile,
+  agencyName,
+}: {
+  profile: Driver;
+  agencyName: string | null;
+}) {
   const gate = canGoOnline(profile);
   const online = profile.status === "online";
   return (
@@ -14,6 +20,12 @@ export function DriverHome({ profile }: { profile: Driver }) {
         title={`Hi, ${profile.name.split(" ")[0]}`}
         badge={<Badge tone={online ? "ok" : "neutral"}>{profile.status}</Badge>}
       />
+      <Card>
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">My agency</p>
+        <p className="mt-1 font-sans text-xl font-bold">
+          {agencyName ?? "Unassigned — contact operations"}
+        </p>
+      </Card>
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">

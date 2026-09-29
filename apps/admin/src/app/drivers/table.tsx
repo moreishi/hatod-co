@@ -33,6 +33,7 @@ export function OpsDriverTable({ initial }: { initial: Driver[] }) {
               <tr>
                 <th className="px-4 py-2">Driver</th>
                 <th className="px-4 py-2">Vehicle</th>
+                <th className="px-4 py-2">Agency</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">PA / CPC</th>
                 <th className="px-4 py-2">Actions</th>
@@ -50,6 +51,7 @@ export function OpsDriverTable({ initial }: { initial: Driver[] }) {
                   <td className="px-4 py-2">
                     {d.vehicleType} · {d.plateNo}
                   </td>
+                  <td className="px-4 py-2 text-xs">{d.agencyName ?? "—"}</td>
                   <td className="px-4 py-2">
                     <Badge tone={statusTone(d.status)}>{d.status}</Badge>
                   </td>

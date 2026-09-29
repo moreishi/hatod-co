@@ -280,6 +280,17 @@ function migrate(db: DatabaseSync) {
   db.exec(`INSERT INTO user_roles (user_id, role)
     SELECT id, role FROM users
     WHERE NOT EXISTS (SELECT 1 FROM user_roles WHERE user_roles.user_id = users.id AND user_roles.role = users.role)`);
+  // 020 backfill: orphans belong to the Hatod Direct system agency.
+  db.prepare(
+    "INSERT OR IGNORE INTO users (id, name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run("usr-agency-default", "Hatod Direct", "direct@hatod.co", "+639000000000", "otp-only", "agency");
+  db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(
+    "usr-agency-default",
+    "agency",
+  );
+  db.prepare("UPDATE drivers SET agency_user_id = ? WHERE agency_user_id IS NULL").run(
+    "usr-agency-default",
+  );
 }
 
 export function getDevDb(): DatabaseSync {
