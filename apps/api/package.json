@@ -9,11 +9,12 @@
     "build": "tsc -p tsconfig.build.json && prisma generate",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.json\"",
+    "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/*.ts\" \"*.json\"",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:validate": "tsx prisma/validate-seed.ts"
   },
   "dependencies": {
     "@hailing/constants": "workspace:*",
