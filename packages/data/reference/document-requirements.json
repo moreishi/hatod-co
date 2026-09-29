@@ -1,0 +1,22 @@
+{
+  "$schema": "document-requirements-v1",
+  "note": "Compliance documents per spec §24. Profile photos are separate (spec rule 7).",
+  "driver": [
+    {
+      "type": "DRIVERS_LICENSE",
+      "label": "Driver's license",
+      "required": true
+    },
+    { "type": "OR_CR", "label": "Vehicle OR/CR", "required": true },
+    { "type": "NBI_CLEARANCE", "label": "NBI clearance", "required": true },
+    {
+      "type": "PROOF_OF_ADDRESS",
+      "label": "Proof of address",
+      "required": false
+    }
+  ],
+  "vehicle": [
+    { "type": "OR_CR", "label": "Vehicle OR/CR", "required": true },
+    { "type": "INSURANCE", "label": "Insurance policy", "required": true }
+  ]
+}

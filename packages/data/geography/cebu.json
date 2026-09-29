@@ -1,0 +1,69 @@
+{
+  "$schema": "pilot-subset",
+  "note": "Pilot geography subset. Codes are stable internal IDs shaped like PSGC; city codes match PSGC. Verify barangay codes against the PSGC before production use. Display names are NEVER identifiers (spec rule 17).",
+  "province": { "code": "072200000", "name": "Cebu", "region": "VII" },
+  "cities": [
+    {
+      "code": "072217000",
+      "name": "Cebu City",
+      "parent": "072200000",
+      "barangays": [
+        { "code": "072217001", "name": "Lahug" },
+        { "code": "072217002", "name": "Apas" },
+        { "code": "072217003", "name": "Busay" },
+        { "code": "072217004", "name": "Capitol Site" },
+        { "code": "072217005", "name": "Guadalupe" },
+        { "code": "072217006", "name": "Mabolo" },
+        { "code": "072217007", "name": "Talamban" },
+        { "code": "072217008", "name": "Tisa" },
+        { "code": "072217009", "name": "Basak San Nicolas" },
+        { "code": "072217010", "name": "Poblacion Pardo" }
+      ]
+    },
+    {
+      "code": "072230000",
+      "name": "Mandaue City",
+      "parent": "072200000",
+      "barangays": [
+        { "code": "072230001", "name": "Banilad" },
+        { "code": "072230002", "name": "Casuntingan" },
+        { "code": "072230003", "name": "Tipolo" },
+        { "code": "072230004", "name": "Subangdaku" },
+        { "code": "072230005", "name": "Mantuyong" },
+        { "code": "072230006", "name": "Bakilid" },
+        { "code": "072230007", "name": "Centro" },
+        { "code": "072230008", "name": "Looc" }
+      ]
+    },
+    {
+      "code": "072231000",
+      "name": "Lapu-Lapu City",
+      "parent": "072200000",
+      "barangays": [
+        { "code": "072231001", "name": "Pusok" },
+        { "code": "072231002", "name": "Mactan" },
+        { "code": "072231003", "name": "Maribago" },
+        { "code": "072231004", "name": "Basak" },
+        { "code": "072231005", "name": "Pajo" },
+        { "code": "072231006", "name": "Gun-ob" },
+        { "code": "072231007", "name": "Bankal" },
+        { "code": "072231008", "name": "Punta Engaño" }
+      ]
+    },
+    {
+      "code": "072232000",
+      "name": "Talisay City",
+      "parent": "072200000",
+      "barangays": [
+        { "code": "072232001", "name": "Tabunok" },
+        { "code": "072232002", "name": "Lawaan" },
+        { "code": "072232003", "name": "Bulacao" },
+        { "code": "072232004", "name": "Poblacion" },
+        { "code": "072232005", "name": "San Roque" },
+        { "code": "072232006", "name": "Biasong" },
+        { "code": "072232007", "name": "Pooc" },
+        { "code": "072232008", "name": "Linao" }
+      ]
+    }
+  ]
+}
