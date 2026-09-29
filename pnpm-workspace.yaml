@@ -1,13 +1,14 @@
 # Hailing monorepo workspace (spec §56).
 # NOTE: apps/admin (legacy Next.js app, npm) is intentionally excluded until migrated.
 packages:
+  - "apps/admin"
   - "apps/api"
   - "apps/agency"
   - "apps/worker"
   - "packages/*"
 allowBuilds:
-  '@prisma/client': true
-  '@prisma/engines': true
+  "@prisma/client": true
+  "@prisma/engines": true
   esbuild: true
   prisma: true
   sharp: true
