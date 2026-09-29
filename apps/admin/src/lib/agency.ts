@@ -1,4 +1,5 @@
 import { insertQuery } from "./repo";
+import { paginate } from "./users";
 import { queryDb } from "./db";
 import {
   ONBOARDING_STEPS,
@@ -46,6 +47,55 @@ export async function listApplications(): Promise<AgencyApplication[]> {
      LEFT JOIN users u ON u.id = a.user_id ORDER BY
      CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC LIMIT 100`,
     [],
+  );
+  return rows.map(rowToApp);
+}
+
+export interface ApplicationPage {
+  rows: AgencyApplication[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+const APP_PER_PAGE = 10;
+
+/** Review queue: DB search (business/phone/email) + status filter + pagination. */
+export async function listApplicationsPaged(
+  q = "",
+  status = "",
+  page = 1,
+): Promise<ApplicationPage> {
+  const needle = q.trim();
+  const like = `%${needle}%`;
+  const cleanStatus = ["pending", "approved", "rejected"].includes(status) ? status : "";
+  // One value per slot on both dialects.
+  const where = `WHERE ($1 = '' OR a.business_name LIKE $2 OR a.contact_phone LIKE $3 OR u.email LIKE $4)
+    AND ($5 = '' OR a.status = $6)`;
+  const params = [needle, like, like, like, cleanStatus, cleanStatus];
+  const totalRows = await queryDb<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM agency_applications a LEFT JOIN users u ON u.id = a.user_id ${where}`,
+    params as unknown[],
+  );
+  const total = Number(totalRows[0]?.n ?? 0);
+  const { page: safe, pages, offset, limit } = paginate(total, page, APP_PER_PAGE);
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT a.*, u.email AS account_email FROM agency_applications a
+     LEFT JOIN users u ON u.id = a.user_id ${where}
+     ORDER BY CASE a.status WHEN 'pending' THEN 0 ELSE 1 END, a.created_at DESC
+     LIMIT ${limit} OFFSET ${offset}`,
+    params as unknown[],
+  );
+  return { rows: rows.map(rowToApp), total, page: safe, pages };
+}
+
+/** One agency's own applications, newest first. */
+export async function listMyApplications(userId: string): Promise<AgencyApplication[]> {
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT a.*, u.email AS account_email FROM agency_applications a
+     LEFT JOIN users u ON u.id = a.user_id
+     WHERE a.user_id = $1 ORDER BY a.created_at DESC`,
+    [userId],
   );
   return rows.map(rowToApp);
 }
