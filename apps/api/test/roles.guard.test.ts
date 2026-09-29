@@ -2,6 +2,7 @@ import { ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { describe, expect, it } from "vitest";
 import { roleMatches, RolesGuard } from "../src/auth/roles.guard.js";
+import { PUBLIC_KEY, ROLES_KEY } from "../src/auth/roles.decorator.js";
 import { TokenService } from "../src/auth/token.service.js";
 
 const tokens = new TokenService();
@@ -16,9 +17,13 @@ function contextWith(authHeader?: string): ExecutionContext {
   } as unknown as ExecutionContext;
 }
 
-function guardFor(required: string[]) {
+function guardFor(required: string[], isPublic = false) {
   const reflector = {
-    getAllAndOverride: () => required,
+    getAllAndOverride: (key: string) => {
+      if (key === PUBLIC_KEY) return isPublic;
+      if (key === ROLES_KEY) return required;
+      return undefined;
+    },
   } as unknown as Reflector;
   return new RolesGuard(reflector, tokens);
 }
@@ -58,5 +63,10 @@ describe("RolesGuard (spec rule 49)", () => {
     const guard = guardFor(["ADMIN:OPS"]);
     const ctx = contextWith(`Bearer ${tokens.sign("u", ["RIDER"])}`);
     expect(guard.canActivate(ctx)).toBe(false);
+  });
+
+  it("lets @Public() routes through without credentials", () => {
+    const guard = guardFor([], true);
+    expect(guard.canActivate(contextWith())).toBe(true);
   });
 });

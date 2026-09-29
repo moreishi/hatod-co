@@ -9,7 +9,8 @@ const PUBLIC = new Set(["/login", "/no-access"]);
  */
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC.has(pathname)) return NextResponse.next();
+  if (PUBLIC.has(pathname) || pathname.startsWith("/invite/"))
+    return NextResponse.next();
   const token = req.cookies.get("hailing_session")?.value;
   const session = token ? decodeSession(token) : null;
   if (!session) {
