@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { AdminRole } from "@hailing/constants";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { DEFAULT_TAKE, type Page } from "../common/paging.js";
 
 export interface InviteAdminDto {
   email: string;
@@ -95,23 +96,40 @@ export class AdminService {
   }
 
   /** Platform-wide ride oversight for ops/finance/support. */
-  async listRides(status?: string) {
+  async listRides(
+    status: string | undefined,
+    page: Page = { take: DEFAULT_TAKE, skip: 0 },
+  ) {
     return this.prisma.ride.findMany({
       where: status ? { status } : undefined,
       include: {
         driver: { include: { user: { select: { displayName: true } } } },
       },
       orderBy: { requestedAt: "desc" },
-      take: 100,
+      take: page.take,
+      skip: page.skip,
     });
   }
 
   /** Ledger oversight: every centavo movement, newest first. */
-  async listTransactions(type?: string) {
+  async listTransactions(
+    type: string | undefined,
+    page: Page = { take: DEFAULT_TAKE, skip: 0 },
+  ) {
     return this.prisma.ledgerTransaction.findMany({
       where: type ? { type } : undefined,
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: page.take,
+      skip: page.skip,
+    });
+  }
+
+  /** Sensitive admin/financial operations trail (spec rule 53). */
+  async listAuditLogs(page: Page = { take: DEFAULT_TAKE, skip: 0 }) {
+    return this.prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: page.take,
+      skip: page.skip,
     });
   }
 

@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { Roles } from "../auth/roles.decorator.js";
 import { RolesGuard } from "../auth/roles.guard.js";
+import { parsePage } from "../common/paging.js";
 import { AgenciesService } from "./agencies.service.js";
 import type { CreateVehicleDto } from "./agencies.service.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
@@ -39,8 +40,17 @@ export class AgenciesController {
 
   @Get(":id/drivers")
   @Roles("RIDER")
-  drivers(@Req() req: AuthedRequest, @Param("id") id: string) {
-    return this.agencies.listDrivers(id, requesterOf(req));
+  drivers(
+    @Req() req: AuthedRequest,
+    @Param("id") id: string,
+    @Query("take") take?: string,
+    @Query("skip") skip?: string,
+  ) {
+    return this.agencies.listDrivers(
+      id,
+      requesterOf(req),
+      parsePage({ take, skip }),
+    );
   }
 
   @Get(":id/rides")
@@ -49,11 +59,18 @@ export class AgenciesController {
     @Req() req: AuthedRequest,
     @Param("id") id: string,
     @Query("status") status?: string,
+    @Query("take") take?: string,
+    @Query("skip") skip?: string,
   ) {
     const statuses = status
       ? status.split(",").map((s) => s.trim())
       : undefined;
-    return this.agencies.listRides(id, statuses, requesterOf(req));
+    return this.agencies.listRides(
+      id,
+      statuses,
+      requesterOf(req),
+      parsePage({ take, skip }),
+    );
   }
 
   @Get(":id/vehicles")

@@ -1,7 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { decodeSession, isAgencyStaff, verifySession } from "./session.js";
-
 const SECRET = "agency-session-test";
 
 function sign(sub: string, roles: string[]): string {
