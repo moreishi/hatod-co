@@ -11,6 +11,7 @@ import { NotificationsController } from "../src/notifications/notifications.cont
 import { NotificationsService } from "../src/notifications/notifications.service.js";
 import { OnboardingController } from "../src/onboarding/onboarding.controller.js";
 import { OnboardingService } from "../src/onboarding/onboarding.service.js";
+import { RideEventsGateway } from "../src/realtime/ride-events.gateway.js";
 import { RidesController } from "../src/rides/rides.controller.js";
 import { RidesService } from "../src/rides/rides.service.js";
 
@@ -32,6 +33,7 @@ const INJECTABLES: Record<string, new (...args: never[]) => unknown> = {
   NotificationsService,
   OnboardingController,
   OnboardingService,
+  RideEventsGateway,
   RidesController,
   RidesService,
 };

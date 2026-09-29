@@ -39,12 +39,14 @@ function serviceWith(db: Record<string, unknown>) {
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
+  const realtime = { broadcastRide: vi.fn() };
   const service = new RidesService(
     prisma,
     new RideTransitionGuard(),
     notifications as never,
+    realtime as never,
   );
-  return Object.assign(service, { sent: notifications });
+  return Object.assign(service, { sent: notifications, live: realtime });
 }
 
 const dto = {
@@ -106,6 +108,12 @@ describe("RidesService", () => {
     expect(assigned.status).toBe(RideStatus.ASSIGNED);
     expect(assignedSvc.sent.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ template: "RIDE_ASSIGNED" }),
+    );
+    expect(assignedSvc.live.broadcastRide).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rideId: "ride-1",
+        status: RideStatus.ASSIGNED,
+      }),
     );
 
     const suspended = { ...good, status: "SUSPENDED" };

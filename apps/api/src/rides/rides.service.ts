@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { quoteFare } from "./fare.js";
 import { RideTransitionGuard } from "./ride-transition.guard.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
+import { RideEventsGateway } from "../realtime/ride-events.gateway.js";
 import { pricing } from "@hailing/data";
 
 export interface RequestRideDto {
@@ -32,6 +33,7 @@ export class RidesService {
     @Inject(RideTransitionGuard) private readonly guard: RideTransitionGuard,
     @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
+    @Inject(RideEventsGateway) private readonly realtime: RideEventsGateway,
   ) {}
 
   /** Rider requests a ride → REQUESTED with an upfront quoted fare. */
@@ -95,6 +97,7 @@ export class RidesService {
       }),
     ]);
     await this.notifyRider(rideId, "RIDE_ASSIGNED");
+    await this.broadcastRide(rideId, RideStatus.ASSIGNED);
     return updated;
   }
 
@@ -111,7 +114,7 @@ export class RidesService {
     this.guard.assertTransition(ride.status as RideStatus, to);
     if (to === RideStatus.COMPLETED)
       return this.completeRide(rideId, ride, actorId);
-    return this.prisma.$transaction([
+    const [moved] = await this.prisma.$transaction([
       this.prisma.ride.update({
         where: { id: rideId },
         data: {
@@ -125,6 +128,8 @@ export class RidesService {
         data: { rideId, from: ride.status, to, actorId },
       }),
     ]);
+    await this.broadcastRide(rideId, to);
+    return moved;
   }
 
   private async completeRide(
@@ -187,7 +192,20 @@ export class RidesService {
       }),
     ]);
     await this.notifyRider(rideId, "RIDE_COMPLETED");
+    await this.broadcastRide(rideId, RideStatus.COMPLETED);
     return completed;
+  }
+
+  private async broadcastRide(rideId: string, status: RideStatus) {
+    const ride = await this.prisma.ride.findUniqueOrThrow({
+      where: { id: rideId },
+    });
+    this.realtime.broadcastRide({
+      rideId,
+      status,
+      agencyId: ride.agencyId,
+      driverId: ride.driverId,
+    });
   }
 
   /** Best-effort rider SMS for assignment + completion (outbox, worker sends). */
