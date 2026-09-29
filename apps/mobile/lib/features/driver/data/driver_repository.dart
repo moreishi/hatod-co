@@ -39,6 +39,15 @@ class DriverRepository {
     return Ride.fromJson(body);
   }
 
+  /// Accept whichever path holds: pending offer first, assigned fallback.
+  Future<Ride> acceptRide(String rideId) async {
+    try {
+      return await acceptOffer(rideId);
+    } catch (_) {
+      return acceptAssigned(rideId);
+    }
+  }
+
   Future<Ride> transition(String rideId, String to) async {
     final body = await api.post('/api/rides/$rideId/transition', {'to': to})
         as Map<String, dynamic>;

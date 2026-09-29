@@ -41,15 +41,19 @@ class ApiClient {
   }
 
   dynamic _decode(http.Response res) {
-    final body = res.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(res.body) as Map<String, dynamic>;
+    dynamic body;
+    if (res.body.isNotEmpty) {
+      body = jsonDecode(res.body);
+    } else {
+      body = <String, dynamic>{};
+    }
     switch (res.statusCode) {
       case 200:
       case 201:
         return body;
       case 400:
-        throw ApiException((body['message'] as String?) ?? 'Invalid request.',
+        final message = body is Map ? body['message'] as String? : null;
+        throw ApiException(message ?? 'Invalid request.',
             statusCode: 400, technical: '${res.request?.url}');
       case 401:
         throw ApiException(ApiException.unauthorized.userMessage, statusCode: 401);
