@@ -42,6 +42,20 @@ describe("AgenciesService (spec §17, §18)", () => {
     expect(await svc.myAgencies(admin)).toHaveLength(2);
   });
 
+  it("scopes ride lists to the agency", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "ride-1" }]);
+    const svc = serviceWith({ ride: { findMany } });
+    await svc.listRides("ag-1", ["REQUESTED", "ASSIGNED"], owner);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { agencyId: "ag-1", status: { in: ["REQUESTED", "ASSIGNED"] } },
+      }),
+    );
+    await expect(svc.listRides("ag-1", undefined, outsider)).rejects.toThrow(
+      "not a member of this agency",
+    );
+  });
+
   it("blocks outsiders from another agency's drivers", async () => {
     const svc = serviceWith({
       driver: { findMany: vi.fn().mockResolvedValue([]) },

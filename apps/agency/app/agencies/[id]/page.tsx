@@ -22,6 +22,12 @@ export default async function DriverBoard({
         ← Agencies
       </Link>
       <h1 className="mt-2 text-3xl font-bold">Driver board</h1>
+      <Link
+        href={`/agencies/${id}/dispatch`}
+        className="mt-1 inline-block text-sm font-medium text-brand-700"
+      >
+        Open dispatch →
+      </Link>
       <p className="mt-1 font-mono text-xs text-slate-500">{id}</p>
       <ul className="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
         {drivers.map((driver) => (

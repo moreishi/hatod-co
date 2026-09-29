@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -37,6 +38,19 @@ export class AgenciesController {
   @Roles("RIDER")
   drivers(@Req() req: AuthedRequest, @Param("id") id: string) {
     return this.agencies.listDrivers(id, requesterOf(req));
+  }
+
+  @Get(":id/rides")
+  @Roles("RIDER")
+  rides(
+    @Req() req: AuthedRequest,
+    @Param("id") id: string,
+    @Query("status") status?: string,
+  ) {
+    const statuses = status
+      ? status.split(",").map((s) => s.trim())
+      : undefined;
+    return this.agencies.listRides(id, statuses, requesterOf(req));
   }
 
   @Post(":id/vehicles")

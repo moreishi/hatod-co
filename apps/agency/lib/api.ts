@@ -39,20 +39,49 @@ export interface DriverDto {
   assignments: { vehicle: { plateNo: string; type: string } }[];
 }
 
-/** Server components: forward the session cookie as a Bearer token. */
-export async function apiAsUser<T>(path: string): Promise<T> {
+/** Server components/handlers: forward the session cookie as a Bearer token. */
+export async function apiAsUser<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const token = (await cookies()).get("hailing_session")?.value;
   if (!token) throw new Error("no session");
   const res = await fetch(`${API_URL}/api${path}`, {
-    headers: { authorization: `Bearer ${token}` },
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${token}`,
+      ...(init?.headers ?? {}),
+    },
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`API ${res.status}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new Error(body?.message ?? `API ${res.status}`);
+  }
   return res.json() as Promise<T>;
 }
 
 export function myAgencies() {
   return apiAsUser<AgencyDto[]>("/agencies/mine");
+}
+
+export interface RideDto {
+  id: string;
+  status: string;
+  pickupLabel: string;
+  dropoffLabel: string;
+  fareCentavos: number;
+  paymentMethod: string;
+  driver: { user: { displayName: string } } | null;
+}
+
+export function agencyRides(agencyId: string, statuses: string[]) {
+  return apiAsUser<RideDto[]>(
+    `/agencies/${agencyId}/rides?status=${statuses.join(",")}`,
+  );
 }
 
 export function agencyDrivers(agencyId: string) {

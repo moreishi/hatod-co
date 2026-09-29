@@ -32,6 +32,28 @@ export class AgenciesService {
     return this.prisma.agency.findMany({ where: { id: { in: ids } } });
   }
 
+  /** Rides booked under this agency, optionally filtered by status. */
+  async listRides(
+    agencyId: string,
+    statuses: string[] | undefined,
+    requester: Requester,
+  ) {
+    this.requireAgency(agencyId, requester);
+    return this.prisma.ride.findMany({
+      where: {
+        agencyId,
+        ...(statuses && statuses.length > 0
+          ? { status: { in: statuses } }
+          : {}),
+      },
+      include: {
+        driver: { include: { user: { select: { displayName: true } } } },
+      },
+      orderBy: { requestedAt: "desc" },
+      take: 100,
+    });
+  }
+
   async listDrivers(agencyId: string, requester: Requester) {
     this.requireAgency(agencyId, requester);
     return this.prisma.driver.findMany({
