@@ -7,7 +7,13 @@ import { E2E } from "./playwright.config.js";
  * of silent stale-build test runs. (Runs before servers exist, never after.)
  */
 if (process.platform === "win32") {
-  for (const port of [E2E.apiPort, E2E.adminPort, E2E.agencyPort]) {
+  for (const port of [
+    E2E.apiPort,
+    E2E.adminPort,
+    E2E.agencyPort,
+    E2E.riderPort,
+    E2E.driverPort,
+  ]) {
     try {
       const out = execSync(
         `powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"`,
