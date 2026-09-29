@@ -80,6 +80,7 @@ async function main() {
       userId: driverUser.id,
       agencyId: agency.id,
       status: "ACTIVE",
+      isOnline: true,
       licenseNo: "E2E0001",
     },
   });

@@ -45,8 +45,20 @@ export class RidesController {
     return this.rides.assignRide(id, body.driverId, req.user!.sub);
   }
 
+  @Post(":id/accept")
+  @Roles("DRIVER:*")
+  accept(@Req() req: AuthedRequest, @Param("id") id: string) {
+    return this.rides.acceptRide(id, req.user!.sub);
+  }
+
+  @Post(":id/reject")
+  @Roles("DRIVER:*")
+  reject(@Req() req: AuthedRequest, @Param("id") id: string) {
+    return this.rides.rejectRide(id, req.user!.sub);
+  }
+
   @Post(":id/transition")
-  @Roles("AGENCY:*", "DRIVER:*", "ADMIN:OPS", "ADMIN:SUPER_ADMIN")
+  @Roles("AGENCY:*", "DRIVER:*", "ADMIN:OPS", "ADMIN:SUPER_ADMIN", "RIDER")
   transition(
     @Req() req: AuthedRequest,
     @Param("id") id: string,

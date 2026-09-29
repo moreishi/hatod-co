@@ -101,6 +101,15 @@ export class MessagingService {
     );
   }
 
+  /** Remove an unconsummated conversation (driver reject requeues the ride). */
+  async deleteConversation(rideId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { rideId },
+    });
+    if (!conversation) return null;
+    return this.prisma.conversation.delete({ where: { id: conversation.id } });
+  }
+
   async closeConversation(rideId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { rideId },

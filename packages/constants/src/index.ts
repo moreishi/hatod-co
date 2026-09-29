@@ -20,7 +20,12 @@ export type RideStatus = (typeof RideStatus)[keyof typeof RideStatus];
 /** Allowed ride transitions. Backend enforces; clients cannot bypass. */
 export const RideTransitions: Record<RideStatus, readonly RideStatus[]> = {
   REQUESTED: [RideStatus.ASSIGNED, RideStatus.CANCELLED, RideStatus.NO_DRIVERS],
-  ASSIGNED: [RideStatus.DRIVER_EN_ROUTE, RideStatus.CANCELLED],
+  // ASSIGNED -> REQUESTED is the driver-reject requeue path.
+  ASSIGNED: [
+    RideStatus.DRIVER_EN_ROUTE,
+    RideStatus.REQUESTED,
+    RideStatus.CANCELLED,
+  ],
   DRIVER_EN_ROUTE: [RideStatus.DRIVER_ARRIVED, RideStatus.CANCELLED],
   DRIVER_ARRIVED: [RideStatus.IN_PROGRESS, RideStatus.CANCELLED],
   IN_PROGRESS: [RideStatus.COMPLETED],

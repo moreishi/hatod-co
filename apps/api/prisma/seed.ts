@@ -220,6 +220,7 @@ async function main() {
         userId: user.id,
         agencyId: agency.id,
         status: driverStatuses[i],
+        isOnline: driverStatuses[i] === DriverStatus.ACTIVE,
         licenseNo: `L${int(1000000, 9999999)}`,
       },
     });

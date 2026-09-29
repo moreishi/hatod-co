@@ -107,6 +107,7 @@ model Driver {
   userId      String   @unique
   agencyId    String
   status      String   @default("APPLICANT") // DriverStatus; creation != dispatchable
+  isOnline    Boolean  @default(false)
   licenseNo   String?
   dateOfBirth DateTime?
   createdAt   DateTime @default(now())
@@ -168,6 +169,7 @@ model Ride {
   fareCentavos    Int
   paymentMethod   String    @default("CASH") // CASH | WALLET
   cancelReason    String?
+  acceptedAt      DateTime?
   requestedAt     DateTime  @default(now())
   completedAt     DateTime?
   createdAt       DateTime  @default(now())
