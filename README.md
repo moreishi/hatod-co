@@ -11,7 +11,7 @@ event-driven internals; the full blueprint is `HAILING_PROJECT_SPECIFICATION.md`
 | Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                           |
 | Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                          |
 | Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                         |
-| Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phase 1)                        |
+| Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phases 1-2)                     |
 | E2E           | Playwright suite on an isolated stack (`apps/e2e`, ports 3100–3102)                         |
 | Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications`        |
 | Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                                |
@@ -53,7 +53,7 @@ docker compose -f infrastructure/docker-compose.yml up --build
 | `0917100011`–`0917100026`   | ACTIVE drivers                               | —              |
 | `0917100031`–`0917100046`   | riders                                       | —              |
 
-## Simulator (virtual riders/drivers, Phase 1)
+## Simulator (virtual riders/drivers, Phases 1–2)
 
 Exercises the real API — never production (it needs OTP dev codes).
 
@@ -63,9 +63,11 @@ pnpm --filter @hailing/api exec prisma migrate dev
 pnpm --filter @hailing/api run prisma:seed
 pnpm --filter @hailing/api run dev      # :3001
 
-# terminal 2: scenarios (normal_ride, driver_reject, cancel_before_accept)
+# terminal 2: scenarios (normal_ride, driver_reject, cancel_before_accept,
+# chat_reconnect, message_retry)
 pnpm --filter @hailing/simulator exec tsx src/index.ts normal_ride
 pnpm --filter @hailing/simulator exec tsx src/index.ts driver_reject --seed 42
+pnpm --filter @hailing/simulator exec tsx src/index.ts chat_reconnect
 $env:SIM_SPEED="10"; pnpm --filter @hailing/simulator exec tsx src/index.ts normal_ride
 ```
 
@@ -76,7 +78,10 @@ Config via env (defaults shown): `SIM_API_URL` (`http://localhost:3001`),
 (rider `0917100031`, driver `0917100011`, dispatcher `0917100005`).
 
 Each run prints a JSON summary (`scenario`, `rideId`, `events`,
-`chatMessages`, `wsEvents`, `ms`) plus the timestamped event log.
+`chatMessages`, `wsEvents`, `ms`) plus the timestamped event log. Agents
+authenticate over HTTP, join token-authed WebSocket rooms, discover
+assignments through the conversation list, and chat over both HTTP and WS
+(`message.send` / delivered / read sync after reconnect).
 
 ## Loop (every change)
 
@@ -94,7 +99,7 @@ apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, notif
 apps/admin/      Platform admin portal (session, rides, finance, admins/invites, audit)
 apps/agency/     Agency portal (home, driver board, dispatch, documents, fleet)
 apps/worker/     Notification outbox consumer + retention purge
-apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept)
+apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept, chat_reconnect, message_retry)
 apps/e2e/        Playwright specs on isolated ports + database
 packages/        constants, data, notifications
 infrastructure/  docker-compose.yml (LocalStage), Dockerfiles per app
