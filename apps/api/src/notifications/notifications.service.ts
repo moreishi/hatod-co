@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { NotificationChannel } from "@hailing/constants";
 import type { TemplateName } from "@hailing/notifications";
 import { Templates } from "@hailing/notifications";
@@ -18,7 +18,7 @@ export interface EnqueueDto {
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async enqueue(dto: EnqueueDto) {
     return this.prisma.notification.create({

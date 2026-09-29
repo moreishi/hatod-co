@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import {
   DISPATCHABLE_DRIVER_STATUSES,
   PaymentMethod,
@@ -28,8 +28,9 @@ const PLATFORM_WALLET_ID = "platform";
 @Injectable()
 export class RidesService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly guard: RideTransitionGuard,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RideTransitionGuard) private readonly guard: RideTransitionGuard,
+    @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
   ) {}
 

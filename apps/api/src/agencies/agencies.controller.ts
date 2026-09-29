@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Get,
@@ -26,7 +27,9 @@ function requesterOf(req: AuthedRequest): Requester {
 @UseGuards(RolesGuard)
 @Controller("agencies")
 export class AgenciesController {
-  constructor(private readonly agencies: AgenciesService) {}
+  constructor(
+    @Inject(AgenciesService) private readonly agencies: AgenciesService,
+  ) {}
 
   @Get("mine")
   @Roles("RIDER")

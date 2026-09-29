@@ -1,9 +1,9 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Inject, Body, Controller, Post } from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Post("otp/request")
   requestOtp(@Body() body: { phone: string }) {

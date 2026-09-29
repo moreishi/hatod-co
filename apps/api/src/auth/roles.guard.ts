@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import {
+  Inject,
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_KEY, PUBLIC_KEY } from "./roles.decorator.js";
 import { TokenService } from "./token.service.js";
@@ -10,8 +15,8 @@ import { TokenService } from "./token.service.js";
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly tokens: TokenService,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(TokenService) private readonly tokens: TokenService,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {

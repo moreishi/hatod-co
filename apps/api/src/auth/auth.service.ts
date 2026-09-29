@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { compare } from "bcryptjs";
 import {
   generateOtp,
@@ -16,8 +16,9 @@ const DEV = process.env.NODE_ENV !== "production";
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly tokens: TokenService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(TokenService) private readonly tokens: TokenService,
+    @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
   ) {}
 

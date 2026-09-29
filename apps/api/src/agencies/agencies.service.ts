@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -23,7 +24,7 @@ export interface CreateVehicleDto {
  */
 @Injectable()
 export class AgenciesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /** Agencies the requester belongs to (admins see all). */
   async myAgencies(requester: Requester) {

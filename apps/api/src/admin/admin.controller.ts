@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Get,
@@ -23,7 +24,7 @@ interface AuthedRequest {
 @UseGuards(RolesGuard)
 @Controller("admin")
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(@Inject(AdminService) private readonly admin: AdminService) {}
 
   @Post("invitations")
   @Roles("ADMIN:SUPER_ADMIN")

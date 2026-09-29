@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -53,7 +54,8 @@ const VERDICTS: readonly DocumentStatus[] = [
 @Injectable()
 export class OnboardingService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(NotificationsService)
     private readonly notifications: NotificationsService,
   ) {}
 

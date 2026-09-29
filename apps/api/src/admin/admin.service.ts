@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -27,7 +28,7 @@ const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
  */
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async invite(dto: InviteAdminDto, inviterId: string) {
     if (!Object.values(AdminRole).includes(dto.role)) {
