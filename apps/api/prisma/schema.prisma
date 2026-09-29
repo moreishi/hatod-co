@@ -1,0 +1,268 @@
+// Hailing domain schema — initial Foundation v0.1 (spec §13–§48).
+// SQLite (LocalStage) has no native enums: status/role/type columns are
+// TEXT validated against @hailing/constants at the service layer.
+// Postgres/PostGIS production adds CHECK constraints + geography later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identity (spec §15, §16, §19) ----------
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String?
+  displayName  String
+  photoUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  agencyMemberships AgencyMember[]
+  adminRoles        AdminRoleAssignment[]
+  adminInvitations  AdminInvitation[]     @relation("InvitedBy")
+  driverProfile     Driver?
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  otpChallenges     OtpChallenge[]
+}
+
+model AdminRoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String // AdminRole: SUPER_ADMIN | OPS | SUPPORT | FINANCE_ADMIN
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+}
+
+model AdminInvitation {
+  id          String    @id @default(cuid())
+  email       String
+  role        String // AdminRole
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
+}
+
+model OtpChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Agencies (spec §17, §18) ----------
+
+model Agency {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  contactPhone String
+  cityCode     String // geography code from @hailing/data, never a name
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members  AgencyMember[]
+  drivers  Driver[]
+  vehicles Vehicle[]
+}
+
+model AgencyMember {
+  id        String   @id @default(cuid())
+  agencyId  String
+  userId    String
+  role      String // AgencyRole: OWNER | MANAGER | DISPATCHER | FINANCE | VIEWER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, userId])
+}
+
+// ---------- Drivers & vehicles (spec §21–§24; never merged) ----------
+
+model Driver {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  agencyId    String
+  status      String   @default("APPLICANT") // DriverStatus; creation != dispatchable
+  licenseNo   String?
+  dateOfBirth DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User                      @relation(fields: [userId], references: [id])
+  agency      Agency                    @relation(fields: [agencyId], references: [id])
+  assignments DriverVehicleAssignment[]
+  documents   Document[]
+  wallet      Wallet?
+  rides       Ride[]
+}
+
+model Vehicle {
+  id        String   @id @default(cuid())
+  agencyId  String
+  plateNo   String   @unique
+  type      String // VehicleType: MOTORCYCLE | SEDAN | SUV | VAN
+  make      String?
+  model     String?
+  year      Int?
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agency      Agency                    @relation(fields: [agencyId], references: [id])
+  assignments DriverVehicleAssignment[]
+  documents   Document[]
+  rides       Ride[]
+}
+
+// History-preserving assignments: only one active row per driver.
+model DriverVehicleAssignment {
+  id        String    @id @default(cuid())
+  driverId  String
+  vehicleId String
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  isActive  Boolean   @default(true)
+
+  driver  Driver  @relation(fields: [driverId], references: [id])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+}
+
+// ---------- Rides (spec §29–§38) ----------
+
+model Ride {
+  id              String    @id @default(cuid())
+  riderId         String
+  agencyId        String?
+  driverId        String?
+  vehicleId       String?
+  status          String    @default("REQUESTED") // RideStatus state machine
+  pickupLabel     String
+  pickupBrgyCode  String
+  dropoffLabel    String
+  dropoffBrgyCode String
+  distanceKm      Float?
+  fareCentavos    Int
+  paymentMethod   String    @default("CASH") // CASH | WALLET
+  cancelReason    String?
+  requestedAt     DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  driver       Driver?             @relation(fields: [driverId], references: [id])
+  vehicle      Vehicle?            @relation(fields: [vehicleId], references: [id])
+  events       RideEvent[]
+  transactions LedgerTransaction[]
+}
+
+model RideEvent {
+  id        String   @id @default(cuid())
+  rideId    String
+  from      String
+  to        String
+  actorId   String
+  createdAt DateTime @default(now())
+
+  ride Ride @relation(fields: [rideId], references: [id], onDelete: Cascade)
+}
+
+// ---------- Finance: wallets + ledger (spec §44–§46) ----------
+
+model Wallet {
+  id              String   @id @default(cuid())
+  ownerType       String // DRIVER | AGENCY | PLATFORM
+  ownerId         String
+  balanceCentavos Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  driver       Driver?             @relation(fields: [driverId], references: [id])
+  driverId     String?             @unique
+  transactions LedgerTransaction[]
+
+  @@unique([ownerType, ownerId])
+}
+
+model LedgerTransaction {
+  id             String   @id @default(cuid())
+  walletId       String
+  type           String // RIDE_EARNING | COMMISSION | PAYOUT | TOP_UP | ADJUSTMENT
+  amountCentavos Int // signed; balances change ONLY via these rows
+  rideId         String?
+  reference      String?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  ride   Ride?  @relation(fields: [rideId], references: [id])
+}
+
+// ---------- Compliance (spec §24) ----------
+
+model Document {
+  id          String    @id @default(cuid())
+  driverId    String?
+  vehicleId   String?
+  type        String
+  storageKey  String // provider-agnostic key (R2 in production)
+  status      String    @default("PENDING") // PENDING | VERIFIED | REJECTED | EXPIRED
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  driver  Driver?  @relation(fields: [driverId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+}
+
+// ---------- Notifications, audit (spec §47, rule 53) ----------
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String?
+  channel   String // SMS | PUSH | EMAIL | IN_APP
+  template  String
+  payload   String    @default("{}")
+  status    String    @default("QUEUED")
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  diff      String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+}

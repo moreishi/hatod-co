@@ -4,9 +4,11 @@
   "private": true,
   "description": "Centralized domain constants and enums (spec §8, rule: no magic strings)",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check \"src/**/*.ts\"",
     "test": "echo \"constants: no tests (pure type/enum exports)\""
