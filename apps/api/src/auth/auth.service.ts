@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { compare } from "bcryptjs";
 import {
   generateOtp,
@@ -7,16 +7,19 @@ import {
   otpMatches,
   OTP_TTL_MS,
 } from "./otp.js";
-import { PrismaService } from "./prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { TokenService } from "./token.service.js";
+import { NotificationsService } from "../notifications/notifications.service.js";
 
 const DEV = process.env.NODE_ENV !== "production";
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly tokens: TokenService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(TokenService) private readonly tokens: TokenService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Step 1: issue an OTP challenge for a phone number. Dev returns the code. */
@@ -33,7 +36,14 @@ export class AuthService {
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       },
     });
-    // Production sends via SMS provider here (spec §47); LocalStage exposes it.
+    // Outbox for the SMS provider; LocalStage still exposes the code.
+    await this.notifications.enqueue({
+      userId: user.id,
+      channel: "SMS",
+      to: phone,
+      template: "OTP_CODE",
+      variables: { code },
+    });
     return { challengeId: challenge.id, ...(DEV ? { devCode: code } : {}) };
   }
 

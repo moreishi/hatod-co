@@ -2,7 +2,7 @@ import { hashSync } from "bcryptjs";
 import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../src/auth/auth.service.js";
 import { hashOtp } from "../src/auth/otp.js";
-import type { PrismaService } from "../src/auth/prisma.service.js";
+import type { PrismaService } from "../src/prisma/prisma.service.js";
 import { TokenService } from "../src/auth/token.service.js";
 
 function serviceWith(stub: Record<string, Record<string, unknown>>) {
@@ -10,7 +10,8 @@ function serviceWith(stub: Record<string, Record<string, unknown>>) {
     user: stub.user,
     otpChallenge: stub.otpChallenge,
   } as unknown as PrismaService;
-  return new AuthService(prisma, new TokenService());
+  const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
+  return new AuthService(prisma, new TokenService(), notifications as never);
 }
 
 const baseUser = {

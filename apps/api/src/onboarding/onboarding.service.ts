@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -9,7 +10,8 @@ import {
   WalletOwnerType,
 } from "@hailing/constants";
 import { documentRequirements } from "@hailing/data";
-import { PrismaService } from "../auth/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { NotificationsService } from "../notifications/notifications.service.js";
 import { roleMatches } from "../auth/roles.guard.js";
 
 export interface ApplyDriverDto {
@@ -51,7 +53,11 @@ const VERDICTS: readonly DocumentStatus[] = [
  */
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(NotificationsService)
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async applyDriver(userId: string, dto: ApplyDriverDto) {
     const existing = await this.prisma.driver.findUnique({ where: { userId } });
@@ -160,7 +166,25 @@ export class OnboardingService {
             `missing verified documents: ${missing.join(", ")}`,
           );
         }
-        return this.setStatus(driverId, DriverStatus.ACTIVE, reviewerId);
+        const approved = await this.setStatus(
+          driverId,
+          DriverStatus.ACTIVE,
+          reviewerId,
+        );
+        const profile = await this.prisma.driver.findUnique({
+          where: { id: driverId },
+          include: { user: true },
+        });
+        if (profile?.user) {
+          await this.notifications.enqueue({
+            userId: profile.user.id,
+            channel: "SMS",
+            to: profile.user.phone,
+            template: "DRIVER_APPROVED",
+            variables: {},
+          });
+        }
+        return approved;
       }
       case "reject":
         if (!REVIEWABLE.includes(driver.status as DriverStatus)) {

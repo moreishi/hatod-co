@@ -1,4 +1,12 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Inject,
+  Body,
+  Controller,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import type { DocumentStatus } from "@hailing/constants";
 import { Roles } from "../auth/roles.decorator.js";
 import { RolesGuard } from "../auth/roles.guard.js";
@@ -21,7 +29,9 @@ function requesterOf(req: AuthedRequest) {
 @UseGuards(RolesGuard)
 @Controller("onboarding")
 export class OnboardingController {
-  constructor(private readonly onboarding: OnboardingService) {}
+  constructor(
+    @Inject(OnboardingService) private readonly onboarding: OnboardingService,
+  ) {}
 
   @Post("drivers/apply")
   @Roles("RIDER")

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AgenciesService } from "../src/agencies/agencies.service.js";
-import type { PrismaService } from "../src/auth/prisma.service.js";
+import type { PrismaService } from "../src/prisma/prisma.service.js";
 import type { Requester } from "../src/onboarding/onboarding.service.js";
 
 function serviceWith(db: Record<string, unknown>) {

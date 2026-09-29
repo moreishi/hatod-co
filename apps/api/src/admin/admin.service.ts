@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -6,7 +7,7 @@ import {
 import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
 import { AdminRole } from "@hailing/constants";
-import { PrismaService } from "../auth/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 export interface InviteAdminDto {
   email: string;
@@ -27,7 +28,7 @@ const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
  */
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async invite(dto: InviteAdminDto, inviterId: string) {
     if (!Object.values(AdminRole).includes(dto.role)) {

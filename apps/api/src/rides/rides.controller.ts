@@ -1,4 +1,5 @@
 import {
+  Inject,
   Body,
   Controller,
   Get,
@@ -26,7 +27,7 @@ interface AuthedRequest {
 @UseGuards(RolesGuard)
 @Controller("rides")
 export class RidesController {
-  constructor(private readonly rides: RidesService) {}
+  constructor(@Inject(RidesService) private readonly rides: RidesService) {}
 
   @Post()
   @Roles("RIDER")
