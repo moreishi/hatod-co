@@ -4,6 +4,7 @@
   "private": true,
   "description": "Flutter rider + driver app (turbo wiring; Flutter SDK required)",
   "scripts": {
+    "build": "flutter build apk --debug",
     "test": "flutter test",
     "typecheck": "flutter analyze --no-pub",
     "lint": "flutter analyze --no-pub"
