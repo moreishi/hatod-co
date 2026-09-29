@@ -131,3 +131,14 @@ export async function deleteRider(id: string): Promise<void> {
   const q = deleteQuery("riders", id);
   await queryDb(q.text, q.values);
 }
+
+/** Rider's own profile, resolved from their login account. */
+export async function getRiderByUser(userId: string): Promise<Rider | null> {
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT r.*, u.email AS account_email, u.role AS account_role
+     FROM riders r LEFT JOIN users u ON u.id = r.user_id
+     WHERE r.user_id = $1`,
+    [userId],
+  );
+  return rows.length > 0 ? rowToRider(rows[0]) : null;
+}

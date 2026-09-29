@@ -86,6 +86,15 @@ export async function getActiveTrip(driverId: string): Promise<Trip | null> {
   return rows.length > 0 ? rowToTrip(rows[0]) : null;
 }
 
+/** Rider's own trips, newest first. */
+export async function listRiderTrips(riderId: string): Promise<Trip[]> {
+  const rows = await queryDb<Record<string, unknown>>(
+    "SELECT * FROM trips WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
+    [riderId],
+  );
+  return rows.map(rowToTrip);
+}
+
 /** Open dispatch pool: SEARCHING trips with no driver (first-come accept). */
 export async function listOpenOffers(limit = 20): Promise<Trip[]> {
   const rows = await queryDb<Record<string, unknown>>(

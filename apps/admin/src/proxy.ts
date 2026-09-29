@@ -34,13 +34,23 @@ export default auth((req) => {
     (inPortal("/drivers/me") || pathname === "/no-access")
   )
     return;
+  if (
+    req.auth &&
+    !roles.includes("agency") &&
+    !roles.includes("driver") &&
+    roles.includes("rider") &&
+    (inPortal("/riders/me") || pathname === "/no-access")
+  )
+    return;
   if (req.auth && pathname !== "/no-access") {
     const url = req.nextUrl.clone();
     url.pathname = roles.includes("agency")
       ? "/fleet"
       : roles.includes("driver")
         ? "/drivers/me"
-        : "/no-access";
+        : roles.includes("rider")
+          ? "/riders/me"
+          : "/no-access";
     return Response.redirect(url);
   }
 });

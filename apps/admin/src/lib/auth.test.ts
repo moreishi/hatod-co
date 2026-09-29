@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hashPassword, parseCredentials, verifyPassword } from "./auth";
-import { canAccess, isPublicPath } from "./access";
+import { canAccess, isPublicPath, roleHome } from "./access";
 
 describe("parseCredentials", () => {
   it("accepts email or phone plus password", () => {
@@ -41,6 +41,24 @@ describe("canAccess (role gate)", () => {
   it("exact role passes, others fail", () => {
     expect(canAccess("finance", "finance")).toBe(true);
     expect(canAccess("finance", "operations")).toBe(false);
+  });
+});
+
+describe("roleHome (post-login landing)", () => {
+  it("sends staff to the admin home", () => {
+    for (const r of ["superadmin", "operations", "finance", "support"] as const)
+      expect(roleHome([r])).toBe("/admin/me");
+  });
+
+  it("sends app identities to their portals", () => {
+    expect(roleHome(["agency"])).toBe("/fleet");
+    expect(roleHome(["driver"])).toBe("/drivers/me");
+    expect(roleHome(["rider"])).toBe("/riders/me");
+  });
+
+  it("prefers staff home for mixed sets, falls back to login", () => {
+    expect(roleHome(["driver", "operations"])).toBe("/admin/me");
+    expect(roleHome([])).toBe("/login");
   });
 });
 

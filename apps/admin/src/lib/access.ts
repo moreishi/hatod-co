@@ -28,6 +28,16 @@ export function isStaff(role: Role): boolean {
   return STAFF.includes(role);
 }
 
+/** Post-login landing per profile set. Staff share one home; apps get portals. */
+export function roleHome(roles: Role[]): string {
+  if (roles.length === 0) return "/login";
+  if (roles.some((r) => isStaff(r))) return "/admin/me";
+  if (roles.includes("agency")) return "/fleet";
+  if (roles.includes("driver")) return "/drivers/me";
+  if (roles.includes("rider")) return "/riders/me";
+  return "/login";
+}
+
 /** Superadmin passes every gate; everyone else needs an exact role match. */
 export function canAccess(role: Role, required: Role): boolean {
   if (role === "superadmin") return true;

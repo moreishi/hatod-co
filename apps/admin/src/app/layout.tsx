@@ -51,6 +51,8 @@ const DRIVER_NAV: { href: string; label: string }[] = [
   { href: "/drivers/me/settings", label: "Settings" },
 ];
 
+const RIDER_NAV: { href: string; label: string }[] = [{ href: "/riders/me", label: "Home" }];
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -62,11 +64,14 @@ export default async function RootLayout({
   const roles = (session?.user as { roles?: Role[] } | undefined)?.roles ?? [];
   const staff = roles.some((r) => isStaff(r)) || (role ? isStaff(role) : false);
   const agency = !staff && roles.includes("agency");
+  const driver = !staff && !agency && roles.includes("driver");
   const nav = staff
     ? NAV.filter((n) => !n.admin || (role && canManageUsers(role)))
     : agency
       ? AGENCY_NAV
-      : DRIVER_NAV;
+      : driver
+        ? DRIVER_NAV
+        : RIDER_NAV;
   return (
     <html
       lang="en"
