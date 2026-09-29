@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../booking/domain/earning.dart';
 import '../../booking/domain/ride.dart';
 
 /// Driver operations against the real API (mobile spec §39–44).
@@ -52,5 +53,10 @@ class DriverRepository {
     final body = await api.post('/api/rides/$rideId/transition', {'to': to})
         as Map<String, dynamic>;
     return Ride.fromJson(body);
+  }
+
+  Future<EarningSummary> earnings() async {
+    final body = await api.get('/api/drivers/me/earnings') as Map<String, dynamic>;
+    return EarningSummary.fromJson(body);
   }
 }

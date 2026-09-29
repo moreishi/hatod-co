@@ -388,7 +388,10 @@ export class RidesService {
   getRide(id: string) {
     return this.prisma.ride.findUniqueOrThrow({
       where: { id },
-      include: { events: { orderBy: { createdAt: "asc" } } },
+      include: {
+        events: { orderBy: { createdAt: "asc" } },
+        driver: { include: { user: { select: { displayName: true } } } },
+      },
     });
   }
 
@@ -418,5 +421,38 @@ export class RidesService {
         : Promise.resolve([]),
     ]);
     return { asRider, asDriver };
+  }
+
+  /** Driver wallet balance plus RIDE_EARNING totals for the earnings screen. */
+  async driverEarnings(driverUserId: string) {
+    const driver = await this.prisma.driver.findUniqueOrThrow({
+      where: { userId: driverUserId },
+    });
+    const wallet = await this.prisma.wallet.findUnique({
+      where: {
+        ownerType_ownerId: {
+          ownerType: WalletOwnerType.DRIVER,
+          ownerId: driver.id,
+        },
+      },
+    });
+    const earnings = await this.prisma.ledgerTransaction.findMany({
+      where: {
+        walletId: wallet?.id ?? "__none__",
+        type: TransactionType.RIDE_EARNING,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 25,
+    });
+    const totalCentavos = earnings.reduce(
+      (sum, t) => sum + t.amountCentavos,
+      0,
+    );
+    return {
+      balanceCentavos: wallet?.balanceCentavos ?? 0,
+      totalCentavos,
+      tripCount: earnings.length,
+      recent: earnings,
+    };
   }
 }

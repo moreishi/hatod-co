@@ -343,4 +343,50 @@ describe("RidesService", () => {
     expect(mine.asRider.map((r) => r.id)).toEqual(["r-rider"]);
     expect(mine.asDriver.map((r) => r.id)).toEqual(["r-driver"]);
   });
+
+  it("returns driver earnings from wallet ledger", async () => {
+    const svc = serviceWith({
+      driver: {
+        findUnique: vi.fn().mockResolvedValue({ id: "d-1" }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "d-1" }),
+      },
+      wallet: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValue({ id: "w-1", balanceCentavos: 12500 }),
+      },
+      ledgerTransaction: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "t-1", type: "RIDE_EARNING", amountCentavos: 8000 },
+          { id: "t-2", type: "RIDE_EARNING", amountCentavos: 4500 },
+        ]),
+      },
+    });
+    const earnings = (await svc.driverEarnings("u-1")) as {
+      balanceCentavos: number;
+      totalCentavos: number;
+      tripCount: number;
+    };
+    expect(earnings.balanceCentavos).toBe(12500);
+    expect(earnings.totalCentavos).toBe(12500);
+    expect(earnings.tripCount).toBe(2);
+  });
+
+  it("includes driver displayName in ride detail", async () => {
+    const findUniqueOrThrow = vi.fn().mockResolvedValue({
+      id: "ride-1",
+      driver: { user: { displayName: "D" } },
+    });
+    const svc = serviceWith({
+      ride: { findUniqueOrThrow },
+    });
+    await svc.getRide("ride-1");
+    expect(findUniqueOrThrow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          driver: expect.anything(),
+        }),
+      }),
+    );
+  });
 });

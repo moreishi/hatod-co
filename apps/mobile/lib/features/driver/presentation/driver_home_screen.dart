@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../auth/presentation/session_scope.dart';
 import '../../booking/domain/ride.dart';
+import '../../messaging/data/messaging_repository.dart';
 import '../data/driver_repository.dart';
+import 'earnings_screen.dart';
+import 'trips_screen.dart';
 
 /// Driver home: online toggle, current assignment, next-step actions
 /// (mobile spec §39–44 adapted to backend states).
@@ -124,6 +128,40 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             const Card(
               child: ListTile(title: Text('No active ride. Stay online for offers.')),
             ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    final repo = widget.repository;
+                    if (repo == null) return;
+                    final api = SessionScope.of(context).api;
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => DriverTripsScreen(
+                        myId: widget.userId,
+                        repository: repo,
+                        messaging: MessagingRepository(api: api),
+                      ),
+                    ));
+                  },
+                  child: const Text('My trips'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    final repo = widget.repository;
+                    if (repo == null) return;
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => EarningsScreen(repository: repo),
+                    ));
+                  },
+                  child: const Text('Earnings'),
+                ),
+              ),
+            ],
+          ),
           if (_error != null) ...[
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(color: Colors.red)),
