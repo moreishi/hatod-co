@@ -28,18 +28,24 @@ cp .env.example .env   # then set AUTH_SECRET: openssl rand -base64 32
 npm run dev            # http://localhost:3000
 ```
 
-Login with a seeded dev account (password `Hatod123!` for all — dev only,
-never in prod migrations):
+Sign in with any seeded phone number — an SMS code prints in the
+dev-server terminal (`[hatod dev-sms]`, Semaphore in prod):
 
-| Email | Role | Sees |
+| Phone | Role | Sees |
 |---|---|---|
-| `admin@hatod.co` | superadmin | full panel + Users |
-| `ops@hatod.co` | operations | full panel, no Users |
-| `finance@hatod.co` / `support@hatod.co` | finance / support | full panel, no Users |
-| `agency@hatod.co` | agency | `/fleet` portal (dashboard, drivers, earnings) |
-| `driver@hatod.co` / `rider@hatod.co` | driver / rider | `/no-access` (app identities for mobile later) |
+| `09170000001` (admin) | superadmin | full panel + Users |
+| `09170000011` (ops) | operations | full panel, no Users |
+| `09170000022` / `09170000033` | finance / support | full panel, no Users |
+| `09170000044` | agency | `/fleet` portal (dashboard, drivers, earnings) |
+| `09171110001` / `09171110011` | driver / rider | driver portal / `/no-access` |
 
-Override the admin password with `ADMIN_PASSWORD` in `.env`.
+### Demo world (dev only)
+
+First dev-server boot seeds a deterministic demo dataset (~20s, once):
+50+ agencies with approved applications and onboarding progress, ~1100
+drivers (15–30 per fleet, mixed docs statuses), 45 riders with 5–32 trips
+each, wallets funded and settled. Same data on every reseed (seed
+`20260928`). Delete `apps/admin/dev.sqlite3` to replay from scratch.
 
 Checks every change must pass:
 

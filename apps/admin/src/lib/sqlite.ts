@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { hashPasswordSync } from "./auth";
 import { drivers, riders, zones } from "./seed";
+import { seedDemoWorld } from "./seedDemoWorld";
 
 // Dev-only database. Prod runs Postgres (db/migrations/*.sql).
 // Geography columns become plain lat/lng here; distance math falls back to geo.ts.
@@ -164,7 +165,10 @@ function seedIfEmpty(db: DatabaseSync) {
     const ins = db.prepare("INSERT INTO riders (id, name, phone, status) VALUES (?, ?, ?, ?)");
     for (const r of riders) ins.run(r.id, r.name, r.phone || `pending-${r.id}`, r.status);
   }
-  if (count("users") === 0) {
+  const hasAdmin =
+    (db.prepare("SELECT id FROM users WHERE id = 'usr-admin'").get() as { id: string } | undefined) !=
+    null;
+  if (!hasAdmin) {
     // Dev-only bootstrap admin. Prod users come from migration 003 + server-side insert.
     const password = process.env.ADMIN_PASSWORD ?? "Hatod123!";
     if (!process.env.ADMIN_PASSWORD)
@@ -210,6 +214,9 @@ function seedIfEmpty(db: DatabaseSync) {
     ins.run("trip-demo-2", "gensan-airport", "Demo Flyer", "Gensan Airport", "Downtown", 9800, 1200, 247, "cash");
   }
   seedSampleLogins(db);
+  // Demo world (50+ agencies, fleets, rider histories). Runs once — guarded
+  // on driver count so real data is never touched. Delete dev.sqlite3 to replay.
+  seedDemoWorld(db);
 }
 
 /**
