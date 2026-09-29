@@ -1,0 +1,16 @@
+{
+  "$schema": "region-stub",
+  "note": "Region VII stub. Pilot market is Cebu (072200000). Expand per spec §11 before leaving Cebu.",
+  "regions": [
+    {
+      "code": "07",
+      "name": "Central Visayas",
+      "provinces": [
+        { "code": "072200000", "name": "Cebu" },
+        { "code": "071200000", "name": "Bohol" },
+        { "code": "071900000", "name": "Negros Oriental" },
+        { "code": "076100000", "name": "Siquijor" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# Secrets — never commit (spec §20, rule 51)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Deps / build
+node_modules/
+.next/
+dist/
+build/
+out/
+.turbo/
+
+# Prisma / SQLite (dev-only, spec §6: LocalStage exclusive; migrations ARE committed)
+*.sqlite3
+*.sqlite3-journal
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log

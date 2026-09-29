@@ -1,0 +1,18 @@
+{
+  "$schema": "pricing-v1",
+  "note": "Pilot pricing. Apps must read these values — never hard-code fares (spec rule 37). Amounts in centavos.",
+  "currency": "PHP",
+  "baseFareCentavos": 4000,
+  "perKmCentavos": {
+    "MOTORCYCLE": 800,
+    "SEDAN": 1500,
+    "SUV": 1800,
+    "VAN": 2200
+  },
+  "minimumFareCentavos": 6000,
+  "commissionTiers": [
+    { "minLifetimeRides": 0, "rateBps": 2000 },
+    { "minLifetimeRides": 500, "rateBps": 1800 },
+    { "minLifetimeRides": 2000, "rateBps": 1500 }
+  ]
+}
