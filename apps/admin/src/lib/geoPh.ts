@@ -211,6 +211,11 @@ export function citiesOf(province: string): string[] {
   return CITIES_OF[province] ?? [];
 }
 
+/** The city a province change lands on: first listed, empty when unknown. */
+export function defaultCityFor(province: string): string {
+  return citiesOf(province)[0] ?? "";
+}
+
 const norm = (s: string): string => s.trim().toLowerCase();
 
 /** Provinces containing a city (exact, case-insensitive). Empty when unknown. */

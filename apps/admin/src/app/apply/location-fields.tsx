@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { COUNTRIES, PROVINCES, citiesOf, resolveProvince } from "@/lib/geoPh";
+import { COUNTRIES, PROVINCES, citiesOf, defaultCityFor, resolveProvince } from "@/lib/geoPh";
 import { Field, inputCls } from "../ui";
 
 export function LocationFields() {
   const [province, setProvince] = useState("South Cotabato");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState(() => defaultCityFor("South Cotabato"));
   const local = useMemo(() => citiesOf(province), [province]);
   const allCities = useMemo(() => {
     const seen = new Set<string>();
@@ -31,10 +31,8 @@ export function LocationFields() {
 
   function onProvince(next: string) {
     setProvince(next);
-    // Coincide: drop the city when it doesn't belong to the new province.
-    if (city && !citiesOf(next).some((c) => c.toLowerCase() === city.trim().toLowerCase())) {
-      setCity("");
-    }
+    // Coincide: the city follows the province.
+    setCity(defaultCityFor(next));
   }
 
   function onCity(next: string) {

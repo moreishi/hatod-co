@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COUNTRIES, PROVINCES, citiesOf, provincesOf, resolveProvince } from "./geoPh";
+import { COUNTRIES, PROVINCES, citiesOf, defaultCityFor, provincesOf, resolveProvince } from "./geoPh";
 
 describe("geoPh constants", () => {
   it("covers all 82 Philippine provinces", () => {
@@ -51,5 +51,15 @@ describe("resolveProvince (city ↔ province linkage)", () => {
   it("returns null when the city is unknown or blank", () => {
     expect(resolveProvince("Narnia Town", "South Cotabato")).toBeNull();
     expect(resolveProvince("  ", "South Cotabato")).toBeNull();
+  });
+});
+
+describe("defaultCityFor (province drives city)", () => {
+  it("picks the first listed city of the province", () => {
+    expect(defaultCityFor("South Cotabato")).toBe("General Santos");
+  });
+
+  it("falls back to empty for unknown provinces", () => {
+    expect(defaultCityFor("Narnia")).toBe("");
   });
 });
