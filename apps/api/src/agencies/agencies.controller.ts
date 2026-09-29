@@ -53,6 +53,22 @@ export class AgenciesController {
     return this.agencies.listRides(id, statuses, requesterOf(req));
   }
 
+  @Get(":id/vehicles")
+  @Roles("RIDER")
+  vehicles(@Req() req: AuthedRequest, @Param("id") id: string) {
+    return this.agencies.listVehicles(id, requesterOf(req));
+  }
+
+  @Get(":id/documents")
+  @Roles("RIDER")
+  documents(
+    @Req() req: AuthedRequest,
+    @Param("id") id: string,
+    @Query("status") status?: string,
+  ) {
+    return this.agencies.listDocuments(id, status, requesterOf(req));
+  }
+
   @Post(":id/vehicles")
   @Roles("RIDER")
   createVehicle(

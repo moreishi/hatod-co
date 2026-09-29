@@ -32,8 +32,7 @@ export class AgenciesService {
     return this.prisma.agency.findMany({ where: { id: { in: ids } } });
   }
 
-  /** Rides booked under this agency, optionally filtered by status. */
-  async listRides(
+  /** Rides booked under this agency, optionally filtered by status. */ async listRides(
     agencyId: string,
     statuses: string[] | undefined,
     requester: Requester,
@@ -134,6 +133,58 @@ export class AgenciesService {
     );
     const results = await this.prisma.$transaction(ops);
     return results[results.length - 1];
+  }
+
+  /** Fleet registry for the agency. */
+  async listVehicles(agencyId: string, requester: Requester) {
+    this.requireAgency(agencyId, requester);
+    return this.prisma.vehicle.findMany({
+      where: { agencyId },
+      include: {
+        assignments: {
+          where: { isActive: true },
+          include: {
+            driver: { include: { user: { select: { displayName: true } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /** Compliance review queue: documents of the agency's drivers (and vehicles). */
+  async listDocuments(
+    agencyId: string,
+    status: string | undefined,
+    requester: Requester,
+  ) {
+    this.requireAgency(agencyId, requester);
+    const driverIds = (
+      await this.prisma.driver.findMany({
+        where: { agencyId },
+        select: { id: true },
+      })
+    ).map((d) => d.id);
+    const vehicleIds = (
+      await this.prisma.vehicle.findMany({
+        where: { agencyId },
+        select: { id: true },
+      })
+    ).map((v) => v.id);
+    return this.prisma.document.findMany({
+      where: {
+        OR: [
+          { driverId: { in: driverIds } },
+          { vehicleId: { in: vehicleIds } },
+        ],
+        ...(status ? { status } : {}),
+      },
+      include: {
+        driver: { include: { user: { select: { displayName: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
   }
 
   private isAdmin(requester: Requester): boolean {

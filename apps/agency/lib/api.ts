@@ -78,6 +78,32 @@ export interface RideDto {
   driver: { user: { displayName: string } } | null;
 }
 
+export interface VehicleDto {
+  id: string;
+  plateNo: string;
+  type: string;
+  status: string;
+  assignments: { driver: { user: { displayName: string } } }[];
+}
+
+export interface DocumentDto {
+  id: string;
+  type: string;
+  status: string;
+  storageKey: string;
+  driver: { user: { displayName: string } } | null;
+}
+
+export function agencyVehicles(agencyId: string) {
+  return apiAsUser<VehicleDto[]>(`/agencies/${agencyId}/vehicles`);
+}
+
+export function agencyDocuments(agencyId: string, status?: string) {
+  return apiAsUser<DocumentDto[]>(
+    `/agencies/${agencyId}/documents${status ? `?status=${status}` : ""}`,
+  );
+}
+
 export function agencyRides(agencyId: string, statuses: string[]) {
   return apiAsUser<RideDto[]>(
     `/agencies/${agencyId}/rides?status=${statuses.join(",")}`,
