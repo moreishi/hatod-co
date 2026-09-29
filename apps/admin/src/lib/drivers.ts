@@ -2,6 +2,7 @@ import { canGoOnline } from "./compliance";
 import { normalizePhPhone } from "./phone";
 import { agencyDisplayName, canOffboard, validateDriver } from "./driverRules";
 import { insertQuery } from "./repo";
+import { paginate } from "./users";
 import { queryDb } from "./db";
 import type { Driver, DriverStatus, VehicleType } from "./types";
 
@@ -57,6 +58,35 @@ export async function listDrivers(filter?: { agencyUserId?: string }): Promise<D
           [],
         );
   return rows.map(rowToDriver);
+}
+
+export interface DriverPage {
+  rows: Driver[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+const DRIVER_PER_PAGE = 10;
+
+/** Ops board: DB search (name/phone/plate/status) + pagination, one value per slot. */
+export async function listDriversPaged(q = "", page = 1): Promise<DriverPage> {
+  const needle = q.trim();
+  const like = `%${needle}%`;
+  const where = `WHERE ($1 = '' OR d.name LIKE $2 OR d.phone LIKE $3 OR d.plate_no LIKE $4 OR d.status LIKE $5 OR d.vehicle_type LIKE $6)`;
+  const params = [needle, like, like, like, like, like];
+  const totalRows = await queryDb<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM drivers d ${where}`,
+    params as unknown[],
+  );
+  const total = Number(totalRows[0]?.n ?? 0);
+  const { page: safe, pages, offset, limit } = paginate(total, page, DRIVER_PER_PAGE);
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT ${DRIVER_COLS} FROM ${DRIVER_FROM} ${where}
+     ORDER BY d.updated_at DESC LIMIT ${limit} OFFSET ${offset}`,
+    params as unknown[],
+  );
+  return { rows: rows.map(rowToDriver), total, page: safe, pages };
 }
 
 export async function getDriver(id: string): Promise<Driver | null> {

@@ -44,7 +44,7 @@ export async function listApplications(): Promise<AgencyApplication[]> {
   const rows = await queryDb<Record<string, unknown>>(
     `SELECT a.*, u.email AS account_email FROM agency_applications a
      LEFT JOIN users u ON u.id = a.user_id ORDER BY
-     CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC`,
+     CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC LIMIT 100`,
     [],
   );
   return rows.map(rowToApp);

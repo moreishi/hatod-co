@@ -18,6 +18,7 @@ export default async function Dashboard() {
   const expiring = drivers.filter(
     (d) => docsExpiringSoon(d.docs.paExpiry) || docsExpiringSoon(d.docs.cpcExpiry),
   );
+  const shown = expiring.slice(0, 10);
 
   return (
     <div className="flex flex-col gap-6">
@@ -49,13 +50,18 @@ export default async function Dashboard() {
           <p className="text-sm text-zinc-500">None — fleet compliant.</p>
         ) : (
           <ul className="text-sm">
-            {expiring.map((d) => (
+            {shown.map((d) => (
               <li key={d.id} className="border-t border-zinc-100 py-2 first:border-0">
                 <span className="font-medium">{d.name}</span> ({d.plateNo}) — PA{" "}
                 {d.docs.paExpiry}, CPC {d.docs.cpcExpiry}
               </li>
             ))}
           </ul>
+        )}
+        {expiring.length > shown.length && (
+          <p className="mt-1 text-xs text-zinc-500">
+            +{expiring.length - shown.length} more — see Drivers.
+          </p>
         )}
       </Card>
     </div>

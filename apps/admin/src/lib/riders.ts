@@ -1,5 +1,7 @@
 import { deleteQuery, insertQuery, isUniqueViolation, updateQuery } from "./repo";
 import { canOffboard } from "./driverRules";
+import { normalizePhPhone } from "./phone";
+import { paginate } from "./users";
 import { hasDb, queryDb } from "./db";
 import type { Rider, RiderStatus } from "./types";
 
@@ -56,6 +58,44 @@ export async function listRiders(): Promise<{ riders: Rider[]; live: boolean }> 
     [],
   );
   return { riders: rows.map(rowToRider), live: hasDb() };
+}
+
+export interface RiderPage {
+  rows: Rider[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+const RIDER_PER_PAGE = 10;
+
+/** Riders board: DB search (name/email/phone) + pagination (one value per slot). */
+export async function listRidersPaged(q = "", page = 1): Promise<RiderPage> {
+  const needle = q.trim();
+  let digits = "";
+  try {
+    digits = normalizePhPhone(needle);
+  } catch {
+    digits = needle.replace(/\D/g, "");
+  }
+  const like = `%${needle}%`;
+  const d1 = `%${digits}%`;
+  const d2 = `%${digits.replace(/^63/, "0")}%`;
+  const where = `WHERE ($1 = '' OR r.name LIKE $2 OR r.email LIKE $3 OR r.phone LIKE $4 OR r.phone LIKE $5 OR r.phone LIKE $6)`;
+  const params = [needle, like, like, like, d1, d2];
+  const totalRows = await queryDb<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM riders r ${where}`,
+    params as unknown[],
+  );
+  const total = Number(totalRows[0]?.n ?? 0);
+  const { page: safe, pages, offset, limit } = paginate(total, page, RIDER_PER_PAGE);
+  const rows = await queryDb<Record<string, unknown>>(
+    `SELECT r.*, u.email AS account_email, u.role AS account_role
+     FROM riders r LEFT JOIN users u ON u.id = r.user_id ${where}
+     ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+    params as unknown[],
+  );
+  return { rows: rows.map(rowToRider), total, page: safe, pages };
 }
 
 export async function createRider(input: NewRider): Promise<Rider> {

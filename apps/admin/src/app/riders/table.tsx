@@ -1,19 +1,31 @@
 "use client";
 
-import { useState } from "react";
 import {
   createRiderAction,
   deleteRiderAction,
   setRiderStatusAction,
 } from "./actions";
 import { canBook } from "@/lib/rider";
-import { filterUsers } from "@/lib/phone";
 import type { Rider } from "@/lib/types";
 import { Badge, Btn, Card, Field, inputCls } from "../ui";
 
-export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean }) {
-  const [q, setQ] = useState("");
-  const riders = filterUsers(initial, q);
+export function RiderTable({
+  initial,
+  live,
+  prev,
+  next,
+  safe,
+  pages,
+  total,
+}: {
+  initial: Rider[];
+  live: boolean;
+  prev: string;
+  next: string;
+  safe: number;
+  pages: number;
+  total: number;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <Card>
@@ -37,16 +49,7 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
           )}
         </form>
       </Card>
-      <Card>
-        <Field label="Search name, email, phone">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Garcia, @example.ph, 0917…"
-            className={inputCls}
-          />
-        </Field>
-      </Card>
+      <RidersPager prev={prev} next={next} safe={safe} pages={pages} total={total} />
       <Card flush>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -60,7 +63,14 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {riders.map((r) => {
+              {initial.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-zinc-500">
+                    No riders match.
+                  </td>
+                </tr>
+              )}
+              {initial.map((r) => {
                 const gate = canBook(r);
                 return (
                   <tr key={r.id} className="hover:bg-zinc-50/60">
@@ -111,7 +121,60 @@ export function RiderTable({ initial, live }: { initial: Rider[]; live: boolean 
             </tbody>
           </table>
         </div>
+        <RidersPager prev={prev} next={next} safe={safe} pages={pages} total={total} bottom />
       </Card>
+    </div>
+  );
+}
+
+function RidersPager({
+  prev,
+  next,
+  safe,
+  pages,
+  total,
+  bottom = false,
+}: {
+  prev: string;
+  next: string;
+  safe: number;
+  pages: number;
+  total: number;
+  bottom?: boolean;
+}) {
+  return (
+    <div
+      className={
+        bottom
+          ? "flex items-center justify-between border-t border-zinc-100 px-4 py-2 text-sm"
+          : "text-xs text-zinc-500 tabular-nums"
+      }
+    >
+      {bottom ? (
+        <>
+          <a
+            href={`/riders?${prev}`}
+            aria-disabled={safe <= 1}
+            className={safe <= 1 ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            ← Prev
+          </a>
+          <span className="text-xs text-zinc-500 tabular-nums">
+            Page {safe} of {pages} · {total} total
+          </span>
+          <a
+            href={`/riders?${next}`}
+            aria-disabled={safe >= pages}
+            className={safe >= pages ? "pointer-events-none text-zinc-300" : "underline"}
+          >
+            Next →
+          </a>
+        </>
+      ) : (
+        <span>
+          Page {safe} of {pages} · {total} total
+        </span>
+      )}
     </div>
   );
 }
