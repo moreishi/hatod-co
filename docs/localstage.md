@@ -17,10 +17,7 @@ pnpm dev                                              # turbo: api :3001, agency
 | API     | http://localhost:3001/api                                               |
 | Health  | http://localhost:3001/api/health                                        |
 | Admin   | http://localhost:3000 (`@hailing/admin`; login `0917100000` + dev code) |
-| Agency  | http://localhost:3002                                                   |
-
-> Legacy `apps/admin-legacy` also uses `:3000` — run one admin at a time
-> (`npm install` there first; its `node_modules` did not survive the move).
+| Agency  | http://localhost:3002            |
 
 ## With Docker (LocalStage full stack)
 
