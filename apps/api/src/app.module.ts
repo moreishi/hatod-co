@@ -5,6 +5,7 @@ import { AppService } from "./app.service.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { AdminModule } from "./admin/admin.module.js";
 import { AgenciesModule } from "./agencies/agencies.module.js";
+import { DriversModule } from "./drivers/drivers.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
 import { NotificationsModule } from "./notifications/notifications.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
@@ -18,6 +19,7 @@ import { RidesModule } from "./rides/rides.module.js";
     AuthModule,
     AdminModule,
     AgenciesModule,
+    DriversModule,
     MessagingModule,
     NotificationsModule,
     OnboardingModule,

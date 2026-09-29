@@ -81,6 +81,9 @@ export class RidesService {
         `driver ${driverId} is ${driver.status}, not dispatchable`,
       );
     }
+    if (!driver.isOnline) {
+      throw new Error(`driver ${driverId} is offline`);
+    }
     const assignment = driver.assignments[0];
     if (!assignment)
       throw new Error(`driver ${driverId} has no active vehicle`);
@@ -109,6 +112,78 @@ export class RidesService {
     return updated;
   }
 
+  /** Assigned driver accepts (simulator plan §5: ASSIGNED → ACCEPTED). */
+  async acceptRide(rideId: string, driverUserId: string) {
+    const ride = await this.prisma.ride.findUniqueOrThrow({
+      where: { id: rideId },
+      include: { driver: true },
+    });
+    if (ride.status !== RideStatus.ASSIGNED) {
+      throw new Error(`ride is ${ride.status}, nothing to accept`);
+    }
+    if (!ride.driver || ride.driver.userId !== driverUserId) {
+      throw new Error("only the assigned driver can accept");
+    }
+    return this.prisma.ride.update({
+      where: { id: rideId },
+      data: { acceptedAt: new Date() },
+    });
+  }
+
+  /** Assigned driver rejects → ride requeues to REQUESTED, stale chat removed. */
+  async rejectRide(rideId: string, driverUserId: string) {
+    const ride = await this.prisma.ride.findUniqueOrThrow({
+      where: { id: rideId },
+      include: { driver: true },
+    });
+    if (ride.status !== RideStatus.ASSIGNED) {
+      throw new Error(`ride is ${ride.status}, nothing to reject`);
+    }
+    if (!ride.driver || ride.driver.userId !== driverUserId) {
+      throw new Error("only the assigned driver can reject");
+    }
+    this.guard.assertTransition(
+      ride.status as RideStatus,
+      RideStatus.REQUESTED,
+    );
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.ride.update({
+        where: { id: rideId },
+        data: {
+          driverId: null,
+          vehicleId: null,
+          acceptedAt: null,
+          status: RideStatus.REQUESTED,
+        },
+      }),
+      this.prisma.rideEvent.create({
+        data: {
+          rideId,
+          from: RideStatus.ASSIGNED,
+          to: RideStatus.REQUESTED,
+          actorId: driverUserId,
+        },
+      }),
+    ]);
+    await this.messaging.deleteConversation(rideId);
+    await this.broadcastRide(rideId, RideStatus.REQUESTED);
+    return updated;
+  }
+
+  /** Driver toggles availability; only online drivers are dispatchable. */
+  async setOnline(driverUserId: string, online: boolean) {
+    const driver = await this.prisma.driver.findUniqueOrThrow({
+      where: { userId: driverUserId },
+    });
+    if (driver.status !== "ACTIVE" && online) {
+      throw new Error(`driver is ${driver.status}, cannot go online`);
+    }
+    return this.prisma.driver.update({
+      where: { id: driver.id },
+      data: { isOnline: online },
+    });
+  }
+
   /** Move a ride along its state machine; COMPLETED settles the ledger pair. */
   async transitionRide(
     rideId: string,
@@ -118,7 +193,29 @@ export class RidesService {
   ) {
     const ride = await this.prisma.ride.findUniqueOrThrow({
       where: { id: rideId },
+      include: { driver: { select: { userId: true } } },
     });
+    const actor = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      include: { adminRoles: true, agencyMemberships: true },
+    });
+    const ownRider = ride.riderId === actorId;
+    const ownDriver = ride.driver?.userId === actorId;
+    const staff =
+      (actor?.adminRoles.length ?? 0) > 0 ||
+      (ride.agencyId !== null &&
+        (actor?.agencyMemberships ?? []).some(
+          (m) => m.agencyId === ride.agencyId && m.isActive,
+        ));
+    if (to === RideStatus.CANCELLED) {
+      if (!ownRider && !ownDriver && !staff) {
+        throw new Error(
+          "only the rider, the assigned driver, or staff can cancel",
+        );
+      }
+    } else if (!ownDriver && !staff) {
+      throw new Error("only the assigned driver or staff can move this ride");
+    }
     this.guard.assertTransition(ride.status as RideStatus, to);
     if (to === RideStatus.COMPLETED)
       return this.completeRide(rideId, ride, actorId);

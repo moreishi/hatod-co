@@ -31,9 +31,12 @@ function serviceWith(db: Record<string, unknown>) {
   const prisma = {
     ...db,
     user: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue({ id: "rider-1", phone: "09170000001" }),
+      findUnique: vi.fn().mockResolvedValue({
+        id: "actor",
+        phone: "09170000001",
+        adminRoles: [{ role: "OPS" }],
+        agencyMemberships: [],
+      }),
       ...(typeof db.user === "object" && db.user !== null ? db.user : {}),
     },
     $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
@@ -44,6 +47,7 @@ function serviceWith(db: Record<string, unknown>) {
     ensureConversation: vi.fn().mockResolvedValue({}),
     postSystemMessage: vi.fn().mockResolvedValue({}),
     closeConversation: vi.fn().mockResolvedValue({}),
+    deleteConversation: vi.fn().mockResolvedValue({}),
   };
   const service = new RidesService(
     prisma,
@@ -107,6 +111,7 @@ describe("RidesService", () => {
       id: "d-1",
       agencyId: "ag-1",
       status: "ACTIVE",
+      isOnline: true,
       user: { id: "u-driver", displayName: "D" },
       assignments: [{ vehicleId: "v-1" }],
     };
@@ -146,6 +151,113 @@ describe("RidesService", () => {
     await expect(
       mk(noVehicle).assignRide("ride-1", "d-1", "actor"),
     ).rejects.toThrow("no active vehicle");
+    const offline = { ...good, isOnline: false };
+    await expect(
+      mk(offline).assignRide("ride-1", "d-1", "actor"),
+    ).rejects.toThrow("is offline");
+  });
+
+  it("lets only the assigned driver accept or reject", async () => {
+    const mk = (ride: object) =>
+      serviceWith({
+        ride: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue(ride),
+          update: vi
+            .fn()
+            .mockImplementation((a: { data: object }) =>
+              Promise.resolve(a.data),
+            ),
+        },
+        driver: {
+          findUniqueOrThrow: vi.fn(),
+          update: vi
+            .fn()
+            .mockImplementation((a: { data: object }) =>
+              Promise.resolve(a.data),
+            ),
+        },
+        rideEvent: { create: vi.fn().mockResolvedValue({}) },
+      });
+    const assigned = {
+      id: "ride-1",
+      status: "ASSIGNED",
+      driver: { id: "d-1", userId: "u-driver" },
+    };
+    const ok = (await mk(assigned).acceptRide("ride-1", "u-driver")) as {
+      acceptedAt: unknown;
+    };
+    expect(ok.acceptedAt).toBeDefined();
+    await expect(
+      mk(assigned).acceptRide("ride-1", "u-stranger"),
+    ).rejects.toThrow("only the assigned driver");
+
+    const rejectSvc = mk(assigned);
+    const requeued = (await rejectSvc.rejectRide("ride-1", "u-driver")) as {
+      status: string;
+    };
+    expect(requeued.status).toBe("REQUESTED");
+    expect(rejectSvc.chat.deleteConversation).toHaveBeenCalledWith("ride-1");
+    await expect(
+      mk(assigned).rejectRide("ride-1", "u-stranger"),
+    ).rejects.toThrow("only the assigned driver");
+  });
+
+  it("lets riders cancel their own rides but not move them", async () => {
+    const mk = (user: object, ride: object) =>
+      serviceWith({
+        ride: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue(ride),
+          update: vi
+            .fn()
+            .mockImplementation((a: { data: object }) =>
+              Promise.resolve(a.data),
+            ),
+        },
+        user: { findUnique: vi.fn().mockResolvedValue(user) },
+        rideEvent: { create: vi.fn().mockResolvedValue({}) },
+      });
+    const own = {
+      id: "ride-1",
+      status: "REQUESTED",
+      riderId: "u-rider",
+      agencyId: null,
+    };
+    const rider = { id: "u-rider", adminRoles: [], agencyMemberships: [] };
+    await mk(rider, own).transitionRide(
+      "ride-1",
+      RideStatus.CANCELLED,
+      "u-rider",
+    );
+    await expect(
+      mk(rider, own).transitionRide("ride-1", RideStatus.ASSIGNED, "u-rider"),
+    ).rejects.toThrow("only the assigned driver or staff");
+    const stranger = { id: "u-x", adminRoles: [], agencyMemberships: [] };
+    await expect(
+      mk(stranger, own).transitionRide("ride-1", RideStatus.CANCELLED, "u-x"),
+    ).rejects.toThrow(
+      "only the rider, the assigned driver, or staff can cancel",
+    );
+  });
+  it("toggles online only for ACTIVE drivers", async () => {
+    const mk = (driver: object) =>
+      serviceWith({
+        driver: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue(driver),
+          update: vi
+            .fn()
+            .mockImplementation((a: { data: object }) =>
+              Promise.resolve(a.data),
+            ),
+        },
+      });
+    const on = (await mk({ id: "d-1", status: "ACTIVE" }).setOnline(
+      "u-1",
+      true,
+    )) as { isOnline: boolean };
+    expect(on.isOnline).toBe(true);
+    await expect(
+      mk({ id: "d-1", status: "SUSPENDED" }).setOnline("u-1", true),
+    ).rejects.toThrow("cannot go online");
   });
 
   it("settles the ledger pair on completion and rejects illegal jumps", async () => {
