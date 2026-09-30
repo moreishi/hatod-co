@@ -10,7 +10,6 @@ import 'package:hailing_mobile/core/widgets/otp_boxes.dart';
 import 'package:hailing_mobile/core/widgets/state_views.dart';
 import 'package:hailing_mobile/core/widgets/wallet_hero.dart';
 import 'package:hailing_mobile/features/auth/presentation/create_profile_screen.dart';
-import 'package:hailing_mobile/features/auth/presentation/login_screen_new.dart';
 import 'package:hailing_mobile/features/auth/presentation/permissions_screen.dart';
 import 'package:hailing_mobile/features/auth/presentation/signup_screen.dart';
 import 'package:hailing_mobile/features/messaging/presentation/messages_list_screen.dart';
@@ -130,12 +129,11 @@ void main() {
       expect(find.text('Maybe Later'), findsOneWidget);
     });
 
-    testWidgets('login form validates', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-          home: LoginFormScreen(onLogin: (_, __) {})));
-      await tester.tap(find.text('Log In'));
-      await tester.pump();
-      expect(find.text('Phone required'), findsOneWidget);
+    testWidgets('signup has no password or Google options', (tester) async {
+      await tester.pumpWidget(MaterialApp(home: SignupScreen(onContinue: (_) {})));
+      expect(find.text('Continue'), findsOneWidget);
+      expect(find.textContaining('Password'), findsNothing);
+      expect(find.textContaining('Google'), findsNothing);
     });
   });
 

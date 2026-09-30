@@ -3,7 +3,8 @@ import '../../../core/widgets/hatod_button.dart';
 import '../../../core/widgets/hatod_header.dart';
 import '../../../core/widgets/hatod_input.dart';
 
-/// Spec §4-03 Sign Up: Create your account + phone + Continue + Terms + Google.
+/// Spec §4-03 Sign Up: Create your account + phone + Continue + Terms.
+/// OTP-only: no password, no Google sign-in.
 class SignupScreen extends StatefulWidget {
   final void Function(String phone) onContinue;
 
@@ -64,23 +65,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   'By continuing you agree to Terms & Privacy Policy.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
-                const Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('or'),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                HatodButton(
-                  label: 'Continue with Google',
-                  variant: HatodButtonVariant.secondary,
-                  onPressed: () {},
                 ),
               ],
             ),

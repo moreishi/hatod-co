@@ -16,11 +16,17 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  /// Minimum branding display (spec §8 splash must be seen, not flashed).
+  static const minDisplay = Duration(seconds: 2);
+
   @override
   void initState() {
     super.initState();
-    widget.auth.restore().then((session) {
-      if (mounted) widget.onResolved(session);
+    Future.wait([
+      widget.auth.restore(),
+      Future.delayed(minDisplay),
+    ]).then((results) {
+      if (mounted) widget.onResolved(results[0] as Session?);
     });
   }
 

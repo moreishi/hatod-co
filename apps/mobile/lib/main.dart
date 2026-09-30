@@ -8,7 +8,6 @@ import 'features/auth/domain/role_routing.dart';
 import 'features/auth/domain/session.dart';
 import 'features/auth/presentation/create_profile_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
-import 'features/auth/presentation/login_screen_new.dart';
 import 'features/auth/presentation/otp_screen.dart';
 import 'features/auth/presentation/permissions_screen.dart';
 import 'features/auth/presentation/signup_screen.dart';
@@ -31,7 +30,6 @@ enum AppRoute {
   otp,
   createProfile,
   permissions,
-  loginForm,
   loginOtp,
   home
 }
@@ -78,7 +76,8 @@ class _HailingAppState extends State<HailingApp> {
         home: switch (_route) {
           AppRoute.splash => SplashScreen(auth: _auth, onResolved: _onSplashResolved),
           AppRoute.welcome => WelcomeScreen(
-              onLogin: () => setState(() => _route = AppRoute.loginForm),
+              // OTP-only auth: Log In goes straight to the OTP login.
+              onLogin: () => setState(() => _route = AppRoute.loginOtp),
               onCreateAccount: () => setState(() => _route = AppRoute.signup),
             ),
           AppRoute.signup => SignupScreen(
@@ -99,9 +98,6 @@ class _HailingAppState extends State<HailingApp> {
           AppRoute.permissions => PermissionsScreen(
               onAllow: () => setState(() => _route = AppRoute.loginOtp),
               onLater: () => setState(() => _route = AppRoute.loginOtp),
-            ),
-          AppRoute.loginForm => LoginFormScreen(
-              onLogin: (_, __) => setState(() => _route = AppRoute.loginOtp),
             ),
           AppRoute.loginOtp => LoginScreen(onAuthenticated: _onAuthenticated),
           AppRoute.home => () {

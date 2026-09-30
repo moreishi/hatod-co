@@ -99,7 +99,8 @@ void main() {
       expect(find.text('Fast. Safe. Reliable.'), findsOneWidget);
       await tester.tap(find.text('Log In'));
       await tester.pumpAndSettle();
-      expect(find.text('Welcome back!'), findsOneWidget);
+      // OTP-only auth: Log In goes straight to the OTP login.
+      expect(find.text('Send code'), findsOneWidget);
     });
   });
 }
