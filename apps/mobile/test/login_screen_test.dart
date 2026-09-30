@@ -80,10 +80,10 @@ void main() {
   });
 
   group('HailingApp bootstrap', () {
-    testWidgets('shows login with no stored session', (tester) async {
+    testWidgets('shows welcome with no stored session', (tester) async {
       await tester.pumpWidget(const HailingApp());
       await tester.pumpAndSettle();
-      expect(find.text('Send code'), findsOneWidget);
+      expect(find.text('Fast. Safe. Reliable.'), findsOneWidget);
     });
   });
 }
