@@ -69,6 +69,18 @@ model OtpChallenge {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Session {
+  id        String    @id
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // ---------- Agencies (spec §17, §18) ----------
 
 model Agency {
