@@ -19,7 +19,7 @@ import 'features/driver/presentation/driver_home_screen.dart';
 import 'features/rider/presentation/rider_home_screen.dart';
 
 void main() {
-  runApp(const HailingApp());
+  runApp(HailingApp(store: PrefsSessionStore()));
 }
 
 /// Top-level route after splash resolution (hatod-ui-spec §1 AuthStack).
@@ -46,7 +46,7 @@ class _HailingAppState extends State<HailingApp> {
     final config = AppConfig.fromEnvironment();
     _auth = AuthRepository(
       api: ApiClient(baseUrl: config.apiUrl),
-      store: MemorySessionStore(),
+      store: widget.store ?? MemorySessionStore(),
     );
   }
 
@@ -116,7 +116,9 @@ class _HailingAppState extends State<HailingApp> {
 }
 
 class HailingApp extends StatefulWidget {
-  const HailingApp({super.key});
+  final SessionStore? store;
+
+  const HailingApp({super.key, this.store});
 
   @override
   State<HailingApp> createState() => _HailingAppState();

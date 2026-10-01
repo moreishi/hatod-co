@@ -45,6 +45,11 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    // Best-effort server revocation: the local session clears even offline.
+    try {
+      await api.post('/api/auth/logout', {});
+      // ignore: empty_catches
+    } catch (_) {}
     await store.clear();
     api.setToken(null);
   }
