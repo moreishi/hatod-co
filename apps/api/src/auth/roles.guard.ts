@@ -7,19 +7,23 @@ import {
 import { Reflector } from "@nestjs/core";
 import { ROLES_KEY, PUBLIC_KEY } from "./roles.decorator.js";
 import { TokenService } from "./token.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 /**
  * Server-side RBAC (spec rule 49). Never rely on frontend authorization.
  * Supports exact roles and `PREFIX:*` wildcards (e.g. AGENCY:abc:*).
+ * Tokens carrying a session id (jti) are honored only while that Session
+ * row exists and is unrevoked; pre-session tokens are grandfathered.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(TokenService) private readonly tokens: TokenService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -42,9 +46,17 @@ export class RolesGuard implements CanActivate {
     } catch {
       return false;
     }
+    if (payload.jti) {
+      const session = await this.prisma.session.findUnique({
+        where: { id: payload.jti },
+      });
+      if (!session || session.revokedAt || session.userId !== payload.sub)
+        return false;
+    }
     (req as { user?: unknown }).user = {
       sub: payload.sub,
       roles: payload.roles,
+      jti: payload.jti,
     };
     return required.some((need) =>
       payload.roles.some((have) => roleMatches(need, have)),

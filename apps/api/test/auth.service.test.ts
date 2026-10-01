@@ -1,3 +1,8 @@
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { hashSync } from "bcryptjs";
 import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../src/auth/auth.service.js";
@@ -9,6 +14,7 @@ function serviceWith(stub: Record<string, Record<string, unknown>>) {
   const prisma = {
     user: stub.user,
     otpChallenge: stub.otpChallenge,
+    session: stub.session,
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
   return new AuthService(prisma, new TokenService(), notifications as never);
@@ -47,6 +53,7 @@ describe("AuthService OTP flow", () => {
         delete: vi.fn().mockResolvedValue({}),
         update: vi.fn(),
       },
+      session: { create: vi.fn().mockResolvedValue({}) },
     });
 
     // Recover the plaintext by issuing then reading the dev code path is
@@ -67,6 +74,9 @@ describe("AuthService OTP flow", () => {
     });
     await expect(noUser.requestOtp("09000000000")).rejects.toThrow(
       "account not found",
+    );
+    await expect(noUser.requestOtp("09000000000")).rejects.toThrowError(
+      NotFoundException,
     );
 
     const mk = (challenge: object) =>
@@ -90,6 +100,9 @@ describe("AuthService OTP flow", () => {
       "invalid code",
     );
     await expect(
+      mk({ ...good }).verifyOtp("ch", "000000"),
+    ).rejects.toThrowError(BadRequestException);
+    await expect(
       mk({ ...good, expiresAt: new Date(Date.now() - 1000) }).verifyOtp(
         "ch",
         "111111",
@@ -101,6 +114,57 @@ describe("AuthService OTP flow", () => {
     await expect(
       mk(null as unknown as object).verifyOtp("ch", "111111"),
     ).rejects.toThrow("challenge not found");
+  });
+});
+
+describe("AuthService self-registration", () => {
+  const regStubs = () => ({
+    user: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi
+        .fn()
+        .mockImplementation((args: { data: { phone: string } }) =>
+          Promise.resolve({ id: "user-9", ...args.data, isActive: true }),
+        ),
+    },
+    otpChallenge: {
+      create: vi.fn().mockImplementation(() => Promise.resolve({ id: "ch-9" })),
+    },
+  });
+
+  it("creates the user and issues an OTP challenge", async () => {
+    const stubs = regStubs();
+    const svc = serviceWith(stubs);
+    const out = await svc.register("09170000999", "Maria Santos");
+    expect(stubs.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          phone: "09170000999",
+          displayName: "Maria Santos",
+        }),
+      }),
+    );
+    expect(out.challengeId).toBe("ch-9");
+  });
+
+  it("rejects duplicates with 409 and bad phones with 400", async () => {
+    const taken = serviceWith({
+      ...regStubs(),
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ id: "u-x", isActive: true }),
+        create: vi.fn(),
+      },
+    });
+    await expect(taken.register("09170000000")).rejects.toThrowError(
+      ConflictException,
+    );
+    const fresh = serviceWith(regStubs());
+    await expect(fresh.register("abc")).rejects.toThrowError(
+      BadRequestException,
+    );
+    await expect(fresh.register("123")).rejects.toThrowError(
+      BadRequestException,
+    );
   });
 });
 
@@ -127,5 +191,72 @@ describe("AuthService password step (2FA gate)", () => {
     await expect(
       mk(null).checkPassword("09170000000", "s3cret!"),
     ).rejects.toThrow("invalid credentials");
+  });
+});
+
+describe("AuthService sessions + logout", () => {
+  const verifiedStubs = () => {
+    const sessions: Record<string, { revokedAt: Date | null }> = {};
+    const stubs = {
+      user: {},
+      otpChallenge: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "ch-s",
+          userId: "user-1",
+          codeHash: hashOtp("222222"),
+          expiresAt: new Date(Date.now() + 60_000),
+          attempts: 0,
+          user: baseUser,
+        }),
+        delete: vi.fn().mockResolvedValue({}),
+      },
+      session: {
+        create: vi.fn().mockImplementation((args: { data: { id: string } }) => {
+          sessions[args.data.id] = { revokedAt: null };
+          return Promise.resolve({ ...args.data, revokedAt: null });
+        }),
+        updateMany: vi
+          .fn()
+          .mockImplementation((args: { where: { id: string } }) => {
+            const s = sessions[args.where.id];
+            if (!s || s.revokedAt) return Promise.resolve({ count: 0 });
+            s.revokedAt = new Date();
+            return Promise.resolve({ count: 1 });
+          }),
+      },
+    };
+    return { stubs, sessions };
+  };
+
+  it("records a server-side session on verify with matching jti", async () => {
+    const { stubs } = verifiedStubs();
+    const svc = serviceWith(stubs);
+    const { token } = await svc.verifyOtp("ch-s", "222222");
+    const payload = new TokenService().verify(token);
+    expect(payload.jti).toBeDefined();
+    expect(stubs.session.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          id: payload.jti,
+          userId: "user-1",
+        }),
+      }),
+    );
+  });
+
+  it("logout revokes the session; unknown sessions report revoked:false", async () => {
+    const { stubs } = verifiedStubs();
+    const svc = serviceWith(stubs);
+    const { token } = await svc.verifyOtp("ch-s", "222222");
+    const { jti } = new TokenService().verify(token);
+    await expect(svc.logout("user-1", jti)).resolves.toMatchObject({
+      revoked: true,
+    });
+    await expect(svc.logout("user-1", jti)).resolves.toMatchObject({
+      revoked: false,
+    });
+    await expect(
+      svc.logout("user-1", "no-such-session"),
+    ).resolves.toMatchObject({ revoked: false });
   });
 });

@@ -32,6 +32,7 @@ model User {
   auditLogs         AuditLog[]
   notifications     Notification[]
   otpChallenges     OtpChallenge[]
+  sessions          Session[]
 }
 
 model AdminRoleAssignment {
@@ -67,6 +68,18 @@ model OtpChallenge {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String    @id
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ---------- Agencies (spec §17, §18) ----------
@@ -166,12 +179,17 @@ model Ride {
   pickupBrgyCode  String
   pickupLat       Float?
   pickupLng       Float?
-  dropoffLabel    String
-  dropoffBrgyCode String
-  distanceKm      Float?
-  fareCentavos    Int
-  vehicleType     String?
-  paymentMethod   String    @default("CASH") // CASH | WALLET
+    dropoffLabel    String
+    dropoffBrgyCode String
+    dropoffLat      Float?
+    dropoffLng      Float?
+    distanceKm      Float?
+    fareCentavos    Int
+    tipCentavos     Int       @default(0)
+    changeFor       Int?
+    riderNote       String?   @default("")
+    vehicleType     String?
+    paymentMethod   String    @default("CASH") // CASH | WALLET
   cancelReason    String?
   acceptedAt      DateTime?
   requestedAt     DateTime  @default(now())
@@ -336,4 +354,24 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
+}
+
+// ---------- Places (routing spec §27–§29) ----------
+// HATOD-owned location cache: seeded POIs + every Nominatim fallback hit.
+// One lookup is persisted once; all later searches are local DB hits.
+
+model Place {
+  id         String   @id @default(cuid())
+  providerId String   @unique // seed:<slug> | nominatim <osm_type>/<osm_id>
+  name       String
+  address    String
+  lat        Float
+  lng        Float
+  source     String   @default("seed") // seed | nominatim
+  areaKey    String   @default("") // Nominatim ISO3166-2 code, lowercased (ph-12, ph-07)
+  hitCount   Int      @default(0)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([name])
 }
