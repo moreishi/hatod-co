@@ -1,0 +1,22 @@
+# LocalStage Postgres + PostGIS (mirrors CI: postgis/postgis:16-3.4).
+# Usage: docker compose up -d postgres
+# Then: DATABASE_URL=postgresql://hailing:hailing@localhost:5432/hailing
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: hailing
+      POSTGRES_PASSWORD: hailing
+      POSTGRES_DB: hailing
+    ports:
+      - "5432:5432"
+    volumes:
+      - hailing-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hailing -d hailing"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  hailing-pgdata:
