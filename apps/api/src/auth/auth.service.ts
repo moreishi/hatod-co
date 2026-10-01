@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { compare } from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import {
   generateOtp,
   hashOtp,
@@ -8,7 +9,7 @@ import {
   OTP_TTL_MS,
 } from "./otp.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { TokenService } from "./token.service.js";
+import { TOKEN_TTL_SECONDS, TokenService } from "./token.service.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
 
 const DEV = process.env.NODE_ENV !== "production";
@@ -77,7 +78,32 @@ export class AuthService {
     }
     await this.prisma.otpChallenge.delete({ where: { id: challenge.id } });
     const roles = this.resolveRoles(challenge.user as RolesSource);
-    return { token: this.tokens.sign(challenge.userId, roles) };
+    // Server-side session: logout revokes this row, killing the token.
+    const jti = randomUUID();
+    await this.prisma.session.create({
+      data: {
+        id: jti,
+        userId: challenge.userId,
+        expiresAt: new Date(Date.now() + TOKEN_TTL_SECONDS * 1000),
+      },
+    });
+    return {
+      token: this.tokens.sign(challenge.userId, roles, TOKEN_TTL_SECONDS, jti),
+    };
+  }
+
+  /**
+   * Logout: revoke the caller's session so the token stops working.
+   * Idempotent — unknown or already-revoked sessions report revoked:false
+   * instead of throwing, so clients can always finish signing out.
+   */
+  async logout(userId: string, jti?: string): Promise<{ revoked: boolean }> {
+    if (!jti) return { revoked: false };
+    const { count } = await this.prisma.session.updateMany({
+      where: { id: jti, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { revoked: count > 0 };
   }
 
   /** Agency/admin password check → caller must still complete OTP (2FA). */

@@ -9,6 +9,7 @@ function serviceWith(stub: Record<string, Record<string, unknown>>) {
   const prisma = {
     user: stub.user,
     otpChallenge: stub.otpChallenge,
+    session: stub.session,
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
   return new AuthService(prisma, new TokenService(), notifications as never);
@@ -47,6 +48,7 @@ describe("AuthService OTP flow", () => {
         delete: vi.fn().mockResolvedValue({}),
         update: vi.fn(),
       },
+      session: { create: vi.fn().mockResolvedValue({}) },
     });
 
     // Recover the plaintext by issuing then reading the dev code path is
@@ -127,5 +129,72 @@ describe("AuthService password step (2FA gate)", () => {
     await expect(
       mk(null).checkPassword("09170000000", "s3cret!"),
     ).rejects.toThrow("invalid credentials");
+  });
+});
+
+describe("AuthService sessions + logout", () => {
+  const verifiedStubs = () => {
+    const sessions: Record<string, { revokedAt: Date | null }> = {};
+    const stubs = {
+      user: {},
+      otpChallenge: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "ch-s",
+          userId: "user-1",
+          codeHash: hashOtp("222222"),
+          expiresAt: new Date(Date.now() + 60_000),
+          attempts: 0,
+          user: baseUser,
+        }),
+        delete: vi.fn().mockResolvedValue({}),
+      },
+      session: {
+        create: vi.fn().mockImplementation((args: { data: { id: string } }) => {
+          sessions[args.data.id] = { revokedAt: null };
+          return Promise.resolve({ ...args.data, revokedAt: null });
+        }),
+        updateMany: vi
+          .fn()
+          .mockImplementation((args: { where: { id: string } }) => {
+            const s = sessions[args.where.id];
+            if (!s || s.revokedAt) return Promise.resolve({ count: 0 });
+            s.revokedAt = new Date();
+            return Promise.resolve({ count: 1 });
+          }),
+      },
+    };
+    return { stubs, sessions };
+  };
+
+  it("records a server-side session on verify with matching jti", async () => {
+    const { stubs } = verifiedStubs();
+    const svc = serviceWith(stubs);
+    const { token } = await svc.verifyOtp("ch-s", "222222");
+    const payload = new TokenService().verify(token);
+    expect(payload.jti).toBeDefined();
+    expect(stubs.session.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          id: payload.jti,
+          userId: "user-1",
+        }),
+      }),
+    );
+  });
+
+  it("logout revokes the session; unknown sessions report revoked:false", async () => {
+    const { stubs } = verifiedStubs();
+    const svc = serviceWith(stubs);
+    const { token } = await svc.verifyOtp("ch-s", "222222");
+    const { jti } = new TokenService().verify(token);
+    await expect(svc.logout("user-1", jti)).resolves.toMatchObject({
+      revoked: true,
+    });
+    await expect(svc.logout("user-1", jti)).resolves.toMatchObject({
+      revoked: false,
+    });
+    await expect(
+      svc.logout("user-1", "no-such-session"),
+    ).resolves.toMatchObject({ revoked: false });
   });
 });

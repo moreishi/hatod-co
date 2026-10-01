@@ -50,5 +50,33 @@ void main() {
       await repo.signOut();
       expect(await store.readToken(), isNull);
     });
+    test('signOut revokes the server session, then clears local state', () async {
+      String? path;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          path = req.url.path;
+          return http.Response('{"revoked":true}', 200);
+        }),
+      );
+      final store = MemorySessionStore();
+      final repo = AuthRepository(api: api, store: store);
+      await store.saveToken(tokenFor(['RIDER']));
+      await repo.signOut();
+      expect(path, endsWith('/api/auth/logout'));
+      expect(await store.readToken(), isNull);
+    });
+
+    test('signOut still clears local state when the server call fails', () async {
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((_) async => http.Response('boom', 500)),
+      );
+      final store = MemorySessionStore();
+      final repo = AuthRepository(api: api, store: store);
+      await store.saveToken(tokenFor(['RIDER']));
+      await repo.signOut();
+      expect(await store.readToken(), isNull);
+    });
   });
 }

@@ -1,12 +1,17 @@
 import { Injectable } from "@nestjs/common";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 export interface TokenPayload {
   sub: string;
   roles: string[];
   iat: number;
   exp: number;
+  /** Session id; absent on tokens issued before server-side sessions. */
+  jti?: string;
 }
+
+/** Session/token lifetime: logout revokes earlier via the Session row. */
+export const TOKEN_TTL_SECONDS = 12 * 3600;
 
 const b64url = (buf: Buffer) => buf.toString("base64url");
 const unb64url = (s: string) => Buffer.from(s, "base64url");
@@ -23,13 +28,19 @@ export class TokenService {
     this.secret = process.env.JWT_SECRET ?? "dev-secret-change-me";
   }
 
-  sign(sub: string, roles: string[], ttlSeconds = 12 * 3600): string {
+  sign(
+    sub: string,
+    roles: string[],
+    ttlSeconds = TOKEN_TTL_SECONDS,
+    jti: string = randomUUID(),
+  ): string {
     const now = Math.floor(Date.now() / 1000);
     const payload: TokenPayload = {
       sub,
       roles,
       iat: now,
       exp: now + ttlSeconds,
+      jti,
     };
     const body = b64url(Buffer.from(JSON.stringify(payload)));
     const sig = b64url(createHmac("sha256", this.secret).update(body).digest());

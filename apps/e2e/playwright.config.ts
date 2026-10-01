@@ -16,7 +16,8 @@ export const E2E = {
   riderPort: Number(process.env.E2E_RIDER_PORT ?? 3104),
   driverPort: Number(process.env.E2E_DRIVER_PORT ?? 3105),
   dbUrl:
-    process.env.E2E_DATABASE_URL ?? `file:${join(apiDir, "prisma", "e2e.db")}`,
+    process.env.E2E_DATABASE_URL ??
+    "postgresql://hailing:hailing@localhost:5432/hailing_e2e",
 };
 
 export default defineConfig({
