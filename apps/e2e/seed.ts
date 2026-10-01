@@ -1,13 +1,13 @@
 /**
- * Compact deterministic world for E2E (isolated e2e.db — never dev.db).
+ * Compact deterministic world for E2E (isolated hailing_e2e — never dev).
  * Requires DATABASE_URL to point at the e2e database (set by global-setup).
  */
 import { PrismaClient } from "@prisma/client";
 
 const dbUrl = process.env.DATABASE_URL ?? "";
-if (!dbUrl.includes("e2e.db")) {
+if (!dbUrl.includes("e2e.db") && !dbUrl.includes("/hailing_e2e")) {
   throw new Error(
-    `e2e seed refused: DATABASE_URL=${dbUrl || "unset"} (want e2e.db)`,
+    `e2e seed refused: DATABASE_URL=${dbUrl || "unset"} (want e2e.db or hailing_e2e)`,
   );
 }
 

@@ -61,9 +61,9 @@ const LAST = [
 ];
 
 const dbUrl = process.env.DATABASE_URL ?? "";
-if (!dbUrl.startsWith("file:")) {
+if (!dbUrl.startsWith("file:") && !dbUrl.includes("@localhost")) {
   throw new Error(
-    `seed refused: DATABASE_URL is not a local file (${dbUrl || "unset"})`,
+    `seed refused: DATABASE_URL is not local (${dbUrl || "unset"})`,
   );
 }
 

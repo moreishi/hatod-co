@@ -11,9 +11,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"prisma/*.ts\" \"*.json\"",
     "test": "vitest run",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate --schema prisma/postgres/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema prisma/postgres/schema.prisma",
+    "prisma:deploy": "prisma migrate deploy --schema prisma/postgres/schema.prisma",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed-places": "tsx prisma/seed-places.ts",
     "prisma:validate": "tsx prisma/validate-seed.ts"
   },
   "dependencies": {
