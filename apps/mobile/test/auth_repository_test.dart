@@ -38,6 +38,24 @@ void main() {
       expect(authed, isNull); // verify call itself is unauthenticated
     });
 
+    test('register creates the account and returns the challenge', () async {
+      Map<String, dynamic>? sent;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          sent = jsonDecode(req.body) as Map<String, dynamic>;
+          return http.Response(
+              jsonEncode({'challengeId': 'ch-9'}), 200);
+        }),
+      );
+      final repo = AuthRepository(api: api, store: MemorySessionStore());
+      final challenge =
+          await repo.register('09170000999', displayName: 'Maria');
+      expect(challenge.challengeId, 'ch-9');
+      expect(sent?['phone'], '09170000999');
+      expect(sent?['displayName'], 'Maria');
+    });
+
     test('restore drops expired tokens and signs out cleanly', () async {
       final api = ApiClient(baseUrl: 'http://x', httpClient: MockClient((_) async {
         return http.Response('{}', 200);
@@ -47,6 +65,34 @@ void main() {
       expect(await repo.restore(), isNull);
       await store.saveToken(tokenFor(['RIDER']));
       expect((await repo.restore())!.sub, 'u-9');
+      await repo.signOut();
+      expect(await store.readToken(), isNull);
+    });
+    test('signOut revokes the server session, then clears local state', () async {
+      String? path;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          path = req.url.path;
+          return http.Response('{"revoked":true}', 200);
+        }),
+      );
+      final store = MemorySessionStore();
+      final repo = AuthRepository(api: api, store: store);
+      await store.saveToken(tokenFor(['RIDER']));
+      await repo.signOut();
+      expect(path, endsWith('/api/auth/logout'));
+      expect(await store.readToken(), isNull);
+    });
+
+    test('signOut still clears local state when the server call fails', () async {
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((_) async => http.Response('boom', 500)),
+      );
+      final store = MemorySessionStore();
+      final repo = AuthRepository(api: api, store: store);
+      await store.saveToken(tokenFor(['RIDER']));
       await repo.signOut();
       expect(await store.readToken(), isNull);
     });

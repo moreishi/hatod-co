@@ -9,6 +9,20 @@ class AuthRepository {
 
   AuthRepository({required this.api, required this.store});
 
+  /// Self-registration: creates the account and returns the first OTP
+  /// challenge (devCode is present on LocalStage only).
+  Future<({String challengeId, String? devCode})> register(String phone,
+      {String? displayName}) async {
+    final body = await api.post('/api/auth/register', {
+      'phone': phone,
+      if (displayName != null) 'displayName': displayName,
+    }) as Map<String, dynamic>;
+    return (
+      challengeId: body['challengeId'] as String,
+      devCode: body['devCode'] as String?,
+    );
+  }
+
   /// Returns the challenge id; devCode is present on LocalStage only.
   Future<({String challengeId, String? devCode})> requestOtp(String phone) async {
     final body = await api.post('/api/auth/otp/request', {'phone': phone})
@@ -45,6 +59,11 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    // Best-effort server revocation: the local session clears even offline.
+    try {
+      await api.post('/api/auth/logout', {});
+      // ignore: empty_catches
+    } catch (_) {}
     await store.clear();
     api.setToken(null);
   }

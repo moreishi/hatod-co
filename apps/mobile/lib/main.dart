@@ -19,7 +19,7 @@ import 'features/driver/presentation/driver_home_screen.dart';
 import 'features/rider/presentation/rider_home_screen.dart';
 
 void main() {
-  runApp(const HailingApp());
+  runApp(HailingApp(store: PrefsSessionStore()));
 }
 
 /// Top-level route after splash resolution (hatod-ui-spec §1 AuthStack).
@@ -39,6 +39,12 @@ class _HailingAppState extends State<HailingApp> {
   AppRoute _route = AppRoute.splash;
   Session? _session;
   String _signupPhone = '';
+  String _signupChallenge = '';
+  String? _signupDevCode;
+  String _loginPhone = '';
+
+  /// Rider/driver mode override; null follows the session roles.
+  HomeDestination? _mode;
 
   @override
   void initState() {
@@ -46,7 +52,7 @@ class _HailingAppState extends State<HailingApp> {
     final config = AppConfig.fromEnvironment();
     _auth = AuthRepository(
       api: ApiClient(baseUrl: config.apiUrl),
-      store: MemorySessionStore(),
+      store: widget.store ?? MemorySessionStore(),
     );
   }
 
@@ -56,13 +62,16 @@ class _HailingAppState extends State<HailingApp> {
     } else {
       setState(() {
         _session = session;
+        _mode = null;
         _route = AppRoute.home;
       });
     }
   }
 
-  void _onAuthenticated(Session session) => setState(() {
+  void _onAuthenticated(Session session, String phone) => setState(() {
         _session = session;
+        _loginPhone = phone;
+        _mode = null;
         _route = AppRoute.home;
       });
 
@@ -81,33 +90,69 @@ class _HailingAppState extends State<HailingApp> {
               onCreateAccount: () => setState(() => _route = AppRoute.signup),
             ),
           AppRoute.signup => SignupScreen(
-              onContinue: (phone) => setState(() {
+              onRegistered: ({
+                required String phone,
+                required String name,
+                required String challengeId,
+                String? devCode,
+              }) =>
+                  setState(() {
                 _signupPhone = phone;
+                _signupChallenge = challengeId;
+                _signupDevCode = devCode;
+                _loginPhone = phone;
                 _route = AppRoute.otp;
               }),
             ),
           AppRoute.otp => OtpScreen(
               phone: _signupPhone.isEmpty ? '+63' : _signupPhone,
-              onVerify: (_) async {
-                setState(() => _route = AppRoute.createProfile);
+              devCode: _signupDevCode,
+              onVerify: (code) async {
+                final session = await _auth.verifyOtp(
+                    _signupChallenge, code);
+                _onAuthenticated(session, _signupPhone);
+                setState(() => _route = AppRoute.permissions);
               },
             ),
           AppRoute.createProfile => CreateProfileScreen(
               onContinue: (_) => setState(() => _route = AppRoute.permissions),
             ),
           AppRoute.permissions => PermissionsScreen(
-              onAllow: () => setState(() => _route = AppRoute.loginOtp),
-              onLater: () => setState(() => _route = AppRoute.loginOtp),
+              onAllow: () => setState(() => _route = AppRoute.home),
+              onLater: () => setState(() => _route = AppRoute.home),
             ),
           AppRoute.loginOtp => LoginScreen(onAuthenticated: _onAuthenticated),
           AppRoute.home => () {
               final session = _session!;
-              return homeFor(session) == HomeDestination.driverHome
+              final dest = _mode ?? homeFor(session);
+              Future<void> signOut() async {
+                await _auth.signOut();
+                setState(() {
+                  _session = null;
+                  _mode = null;
+                  _route = AppRoute.welcome;
+                });
+              }
+
+              return dest == HomeDestination.driverHome
                   ? DriverHomeScreen(
                       userId: session.sub,
+                      phone: _loginPhone,
                       repository: DriverRepository(api: _auth.api),
+                      onSignOut: signOut,
+                      onSwitchToRider: () => setState(
+                          () => _mode = HomeDestination.riderHome),
                     )
-                  : RiderHomeScreen(userId: session.sub);
+                  : RiderHomeScreen(
+                      userId: session.sub,
+                      phone: _loginPhone,
+                      canDrive: session.isDriver,
+                      onSwitchToDriver: session.isDriver
+                          ? () => setState(
+                              () => _mode = HomeDestination.driverHome)
+                          : null,
+                      onSignOut: signOut,
+                    );
             }(),
         },
       ),
@@ -116,7 +161,9 @@ class _HailingAppState extends State<HailingApp> {
 }
 
 class HailingApp extends StatefulWidget {
-  const HailingApp({super.key});
+  final SessionStore? store;
+
+  const HailingApp({super.key, this.store});
 
   @override
   State<HailingApp> createState() => _HailingAppState();
