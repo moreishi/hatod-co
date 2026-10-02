@@ -85,6 +85,21 @@ export class AuthService {
     return { challengeId: challenge.id, ...(DEV ? { devCode: code } : {}) };
   }
 
+  /** Registers an FCM device token for push (upsert: reinstalls + account switches). */
+  async saveDeviceToken(userId: string, token: string, platform?: string) {
+    const clean = token.trim();
+    if (!clean) throw new BadRequestException("device token required");
+    return this.prisma.deviceToken.upsert({
+      where: { token: clean },
+      update: { userId, platform: platform?.trim() || "android" },
+      create: {
+        userId,
+        token: clean,
+        platform: platform?.trim() || "android",
+      },
+    });
+  }
+
   /** Step 2: verify OTP → signed token carrying the user's roles. */
   async verifyOtp(
     challengeId: string,

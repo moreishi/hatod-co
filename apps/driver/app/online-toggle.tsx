@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
 
 export function OnlineToggle() {
   const [online, setOnline] = useState<boolean | null>(null);
@@ -30,18 +31,15 @@ export function OnlineToggle() {
         </strong>
       </p>
       <div className="mt-3 flex gap-3">
-        <button
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white"
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700"
           onClick={() => toggle(true)}
         >
           Go online
-        </button>
-        <button
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
-          onClick={() => toggle(false)}
-        >
+        </Button>
+        <Button variant="outline" onClick={() => toggle(false)}>
           Go offline
-        </button>
+        </Button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>

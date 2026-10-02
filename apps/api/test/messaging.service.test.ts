@@ -297,6 +297,22 @@ describe("MessagingService send rules (spec §18, §20, §34)", () => {
       expect.objectContaining({ channel: "PUSH", template: "NEW_MESSAGE" }),
     );
   });
+
+  it("fans push out per device token", async () => {
+    const svc = serviceWith({
+      deviceToken: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ token: "tok-a" }, { token: "tok-b" }]),
+      },
+    });
+    (svc.live.isViewing as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    await svc.sendMessage("c-1", "rider-1", { content: "hi" });
+    const calls = (svc.sent.enqueue as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toMatchObject({ to: "tok-a", channel: "PUSH" });
+    expect(calls[1][0]).toMatchObject({ to: "tok-b", channel: "PUSH" });
+  });
 });
 
 describe("MessagingService history and receipts (spec §7, §12, §13)", () => {

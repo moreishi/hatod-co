@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
 
 interface Message {
   id: string;
@@ -81,20 +83,16 @@ export function ChatBox({
       </ul>
       {!closed ? (
         <div className="mt-3 flex gap-2">
-          <input
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          <Input
+            className="flex-1"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Message your rider."
             maxLength={1000}
           />
-          <button
-            className="rounded-lg bg-brand-700 px-4 py-2 text-sm text-white disabled:opacity-50"
-            onClick={send}
-            disabled={!draft.trim()}
-          >
+          <Button onClick={send} disabled={!draft.trim()}>
             Send
-          </button>
+          </Button>
         </div>
       ) : (
         <p className="mt-3 text-sm text-slate-500">

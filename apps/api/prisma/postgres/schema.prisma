@@ -33,6 +33,17 @@ model User {
   notifications     Notification[]
   otpChallenges     OtpChallenge[]
   sessions          Session[]
+  deviceTokens    DeviceToken[]
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("android")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AdminRoleAssignment {
@@ -264,6 +275,19 @@ model LedgerTransaction {
 
 // ---------- Compliance (spec §24) ----------
 
+model FareSchedule {
+  id                  String   @id @default(cuid())
+  name                String
+  currency            String   @default("PHP")
+  baseFareCentavos    Int
+  minimumFareCentavos Int
+  perKmCentavos       Json
+  commissionTiers     Json
+  isActive            Boolean  @default(false)
+  createdBy           String?
+  createdAt           DateTime @default(now())
+}
+
 model Document {
   id          String    @id @default(cuid())
   driverId    String?
@@ -273,6 +297,7 @@ model Document {
   status      String    @default("PENDING") // PENDING | VERIFIED | REJECTED | EXPIRED
   reviewedBy  String?
   reviewedAt  DateTime?
+  reviewNote  String?
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

@@ -40,7 +40,9 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(AppSizes.buttonHeight),
+          // Finite width: Size.fromHeight carries an infinite min-width,
+          // which breaks any button laid out in a Row (e.g. chat input).
+          minimumSize: const Size(64, AppSizes.buttonHeight),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(AppRadius.button)),
@@ -49,7 +51,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(AppSizes.buttonHeight),
+          minimumSize: const Size(64, AppSizes.buttonHeight),
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(AppRadius.button)),
           ),

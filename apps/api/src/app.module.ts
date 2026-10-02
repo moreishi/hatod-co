@@ -11,6 +11,7 @@ import { MatchingModule } from "./matching/matching.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
 import { NotificationsModule } from "./notifications/notifications.module.js";
 import { OnboardingModule } from "./onboarding/onboarding.module.js";
+import { PlacesModule } from "./places/places.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { RidesModule } from "./rides/rides.module.js";
 
@@ -27,6 +28,7 @@ import { RidesModule } from "./rides/rides.module.js";
     MessagingModule,
     NotificationsModule,
     OnboardingModule,
+    PlacesModule,
     RidesModule,
   ],
   controllers: [AppController],

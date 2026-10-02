@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/trip_order_card.dart';
 import '../../booking/domain/ride.dart';
 import '../../messaging/data/messaging_repository.dart';
 import '../data/driver_repository.dart';
@@ -42,12 +43,17 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
           : trips.isEmpty
               ? const Center(child: Text('No trips yet.'))
               : ListView.builder(
+                  padding: const EdgeInsets.all(16),
                   itemCount: trips.length,
                   itemBuilder: (context, i) {
                     final ride = trips[i];
-                    return ListTile(
-                      title: Text('${ride.pickupLabel} → ${ride.dropoffLabel}'),
-                      subtitle: Text(ride.status),
+                    return TripOrderCard(
+                      pickupLabel: ride.pickupLabel,
+                      dropoffLabel: ride.dropoffLabel,
+                      fareCentavos: ride.fareCentavos,
+                      dateLine:
+                          '${formatTripDate(ride.requestedAt)} · ${formatTripTime(ride.requestedAt)} → ${formatTripTime(ride.completedAt)}',
+                      status: ride.status,
                       onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => DriverRideScreen(
                           driver: widget.repository,

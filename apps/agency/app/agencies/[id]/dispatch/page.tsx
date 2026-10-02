@@ -3,6 +3,7 @@ import { agencyDrivers, agencyRides } from "@/lib/api.js";
 import { DispatchBoard } from "./dispatch-board.js";
 
 const BOARD_STATUSES = [
+  "NO_DRIVERS",
   "REQUESTED",
   "ASSIGNED",
   "DRIVER_EN_ROUTE",
@@ -32,6 +33,10 @@ export default async function DispatchPage({
         ← Driver board
       </Link>
       <h1 className="mt-2 text-3xl font-bold">Dispatch</h1>
+      <p className="mt-1 max-w-2xl text-sm text-slate-600">
+        Live trips, left to right. Rides needing a driver sit first — pick one
+        and assign your closest online driver.
+      </p>
       <p className="mt-1 font-mono text-xs text-slate-500">{id}</p>
       <DispatchBoard rides={rides} drivers={dispatchable} />
     </main>

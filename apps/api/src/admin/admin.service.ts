@@ -6,8 +6,14 @@ import {
 } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import { hash } from "bcryptjs";
-import { AdminRole } from "@hailing/constants";
+import {
+  AdminRole,
+  MATCH_OFFER_TIMEOUT_SEC,
+  MATCH_RADIUS_KM,
+  PING_FRESH_SEC,
+} from "@hailing/constants";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { BillingService } from "../billing/billing.service.js";
 import { DEFAULT_TAKE, type Page } from "../common/paging.js";
 
 export interface InviteAdminDto {
@@ -29,7 +35,10 @@ const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
  */
 @Injectable()
 export class AdminService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(BillingService) private readonly billing: BillingService,
+  ) {}
 
   async invite(dto: InviteAdminDto, inviterId: string) {
     if (!Object.values(AdminRole).includes(dto.role)) {
@@ -99,9 +108,31 @@ export class AdminService {
   async listRides(
     status: string | undefined,
     page: Page = { take: DEFAULT_TAKE, skip: 0 },
+    search?: string,
   ) {
+    const q = search?.trim();
     return this.prisma.ride.findMany({
-      where: status ? { status } : undefined,
+      where: {
+        ...(status ? { status } : {}),
+        ...(q
+          ? {
+              OR: [
+                { pickupLabel: { contains: q, mode: "insensitive" as const } },
+                { dropoffLabel: { contains: q, mode: "insensitive" as const } },
+                {
+                  driver: {
+                    user: {
+                      displayName: {
+                        contains: q,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                  },
+                },
+              ],
+            }
+          : {}),
+      },
       include: {
         driver: { include: { user: { select: { displayName: true } } } },
       },
@@ -156,6 +187,25 @@ export class AdminService {
       },
     });
     return { conversation, messages };
+  }
+
+  /** Live platform knobs: pricing table, matching, and routing provider. */
+  async platformConfig() {
+    const [schedule, pricing] = await Promise.all([
+      this.billing.getActiveSchedule(),
+      this.billing.getPricing(),
+    ]);
+    return {
+      schedule,
+      pricing,
+      matching: {
+        radiusKm: MATCH_RADIUS_KM,
+        offerTimeoutSec: MATCH_OFFER_TIMEOUT_SEC,
+        pingFreshSec: PING_FRESH_SEC,
+      },
+      routingProvider: process.env.ROUTING_PROVIDER ?? "osrm",
+      environment: process.env.NODE_ENV ?? "development",
+    };
   }
 
   /** Finance summary: totals per transaction type + wallet count. */

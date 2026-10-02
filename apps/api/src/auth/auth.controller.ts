@@ -4,7 +4,7 @@ import { Roles, Public } from "./roles.decorator.js";
 import { RolesGuard } from "./roles.guard.js";
 
 interface AuthedRequest {
-  user?: { sub: string; jti?: string };
+  user?: { sub: string; jti?: string; roles?: string[] };
 }
 
 @UseGuards(RolesGuard)
@@ -41,5 +41,14 @@ export class AuthController {
   @Roles("RIDER")
   logout(@Req() req: AuthedRequest) {
     return this.auth.logout(req.user!.sub, req.user?.jti);
+  }
+
+  @Post("device-token")
+  @Roles("RIDER")
+  deviceToken(
+    @Req() req: AuthedRequest,
+    @Body() body: { token: string; platform?: string },
+  ) {
+    return this.auth.saveDeviceToken(req.user!.sub, body.token, body.platform);
   }
 }

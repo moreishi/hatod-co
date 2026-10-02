@@ -99,7 +99,10 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      expect(find.text('This conversation is closed.'), findsOneWidget);
+      expect(
+          find.text(
+              'This trip ended, so this chat is read-only. New bookings open a fresh chat.'),
+          findsOneWidget);
       expect(find.text('Send'), findsNothing);
     });
   });

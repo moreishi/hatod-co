@@ -42,3 +42,7 @@ apps/e2e/playwright-report/
 build/
 *.freezed.dart
 *.g.dart
+
+# Tool-generated agent instruction files (written by `next dev`)
+apps/*/AGENTS.md
+apps/*/CLAUDE.md

@@ -2,23 +2,33 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
+import { Card } from "@/components/ui/card.js";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog.js";
+import { Input } from "@/components/ui/input.js";
 import type { DriverDto, RideDto } from "@/lib/api.js";
+import { humanStatus, humanTransition } from "@/lib/status.js";
 
 const NEXT: Record<string, string[]> = {
   REQUESTED: [],
+  NO_DRIVERS: ["CANCELLED"],
   ASSIGNED: ["DRIVER_EN_ROUTE", "CANCELLED"],
   DRIVER_EN_ROUTE: ["DRIVER_ARRIVED", "CANCELLED"],
   DRIVER_ARRIVED: ["IN_PROGRESS", "CANCELLED"],
   IN_PROGRESS: ["COMPLETED"],
 };
 
+// NO_DRIVERS leads: unmatched rides need dispatcher rescue first.
 const COLUMNS = [
+  "NO_DRIVERS",
   "REQUESTED",
   "ASSIGNED",
   "DRIVER_EN_ROUTE",
   "DRIVER_ARRIVED",
   "IN_PROGRESS",
 ];
+
+const ASSIGNABLE = ["REQUESTED", "NO_DRIVERS"];
 
 export function DispatchBoard({
   rides,
@@ -31,6 +41,21 @@ export function DispatchBoard({
   const [assignFor, setAssignFor] = useState<string | null>(null);
   const [driverId, setDriverId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = (ride: RideDto) =>
+    !q ||
+    [
+      ride.pickupLabel,
+      ride.dropoffLabel,
+      ride.status,
+      ride.driver?.user.displayName ?? "",
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
 
   async function post(path: string, body: unknown) {
     setError(null);
@@ -50,8 +75,25 @@ export function DispatchBoard({
 
   const assign = (rideId: string) =>
     post("/api/agency/rides/assign", { rideId, driverId });
-  const transition = (rideId: string, to: string, cancelReason?: string) =>
+  const transition = (rideId: string, to: string, cancelReason?: string) => {
+    if (to === "CANCELLED") {
+      setCancelling(rideId);
+      return;
+    }
     post("/api/agency/rides/transition", { rideId, to, cancelReason });
+  };
+
+  const confirmCancel = (rideId: string) => {
+    setBusy(true);
+    post("/api/agency/rides/transition", {
+      rideId,
+      to: "CANCELLED",
+      cancelReason: "cancelled by dispatcher",
+    }).finally(() => {
+      setBusy(false);
+      setCancelling(null);
+    });
+  };
 
   return (
     <div className="mt-8">
@@ -60,18 +102,36 @@ export function DispatchBoard({
           {error}
         </p>
       )}
+      <div className="mb-4 max-w-sm">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search route, driver, or state…"
+        />
+      </div>
+      <ConfirmDialog
+        open={cancelling !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelling(null);
+        }}
+        title="Cancel this ride?"
+        description="The rider is left without a trip — only cancel when the ride genuinely cannot run."
+        confirmLabel="Cancel ride"
+        destructive
+        busy={busy}
+        onConfirm={() => {
+          if (cancelling) confirmCancel(cancelling);
+        }}
+      />
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         {COLUMNS.map((status) => (
-          <section
-            key={status}
-            className="rounded-2xl border border-slate-200 bg-white p-3"
-          >
-            <h2 className="font-mono text-xs font-semibold text-slate-500">
-              {status}
+          <Card key={status} className="p-3">
+            <h2 className="text-xs font-semibold text-slate-500" title={status}>
+              {humanStatus(status)}
             </h2>
             <ul className="mt-2 space-y-2">
               {rides
-                .filter((r) => r.status === status)
+                .filter((r) => r.status === status && matches(r))
                 .map((ride) => (
                   <li
                     key={ride.id}
@@ -89,7 +149,7 @@ export function DispatchBoard({
                         ? ride.driver.user.displayName
                         : "unassigned"}
                     </p>
-                    {status === "REQUESTED" &&
+                    {ASSIGNABLE.includes(status) &&
                       (assignFor === ride.id ? (
                         <div className="mt-2 flex gap-2">
                           <select
@@ -105,48 +165,47 @@ export function DispatchBoard({
                               </option>
                             ))}
                           </select>
-                          <button
-                            className="rounded-lg bg-brand-700 px-2 py-1 text-xs text-white disabled:opacity-50"
+                          <Button
+                            size="sm"
                             disabled={!driverId}
                             onClick={() => assign(ride.id)}
                           >
                             Go
-                          </button>
+                          </Button>
                         </div>
                       ) : (
-                        <button
-                          className="mt-2 text-xs font-medium text-brand-700"
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="mt-2 h-auto p-0"
                           onClick={() => setAssignFor(ride.id)}
                         >
                           Assign
-                        </button>
+                        </Button>
                       ))}
                     <div className="mt-1 flex flex-wrap gap-2">
                       {(NEXT[status] ?? []).map((to) => (
-                        <button
+                        <Button
                           key={to}
-                          className="text-xs font-medium text-slate-600 underline"
-                          onClick={() =>
-                            to === "CANCELLED"
-                              ? transition(
-                                  ride.id,
-                                  to,
-                                  "cancelled by dispatcher",
-                                )
-                              : transition(ride.id, to)
-                          }
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-slate-600"
+                          onClick={() => transition(ride.id, to)}
                         >
-                          {to === "CANCELLED" ? "Cancel" : `→ ${to}`}
-                        </button>
+                          {humanTransition(to)}
+                        </Button>
                       ))}
                     </div>
                   </li>
                 ))}
-              {rides.filter((r) => r.status === status).length === 0 && (
-                <li className="p-2 text-xs text-slate-400">empty</li>
+              {rides.filter((r) => r.status === status && matches(r)).length ===
+                0 && (
+                <li className="p-2 text-xs text-slate-400">
+                  {q ? "no matches in this column" : "empty"}
+                </li>
               )}
             </ul>
-          </section>
+          </Card>
         ))}
       </div>
     </div>

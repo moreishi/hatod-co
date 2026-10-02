@@ -50,6 +50,34 @@ void main() {
         expect(e.userMessage, contains('No connection'));
       }
     });
+
+    test('hanging server fails fast with a connection error', () async {
+      Future<void> hangs(String method) async {
+        final client = ApiClient(
+          baseUrl: 'http://x',
+          timeout: const Duration(milliseconds: 200),
+          httpClient: MockClient((_) async {
+            await Future.delayed(const Duration(seconds: 5));
+            return http.Response('{}', 200);
+          }),
+        );
+        final stopwatch = Stopwatch()..start();
+        try {
+          if (method == 'get') {
+            await client.get('/a');
+          } else {
+            await client.post('/a', const {});
+          }
+          fail('expected throw');
+        } on ApiException catch (e) {
+          expect(e.userMessage, contains('No connection'));
+        }
+        expect(stopwatch.elapsed, lessThan(const Duration(seconds: 4)));
+      }
+
+      await hangs('get');
+      await hangs('post');
+    });
   });
 }
 

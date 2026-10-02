@@ -14,7 +14,7 @@ function serviceWith(stub: Record<string, Record<string, unknown>>) {
   const prisma = {
     user: stub.user,
     otpChallenge: stub.otpChallenge,
-    session: stub.session,
+    ...stub,
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
   return new AuthService(prisma, new TokenService(), notifications as never);
@@ -164,6 +164,37 @@ describe("AuthService self-registration", () => {
     );
     await expect(fresh.register("123")).rejects.toThrowError(
       BadRequestException,
+    );
+  });
+});
+
+describe("AuthService device tokens", () => {
+  it("upserts the token onto the user", async () => {
+    const upsert = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        id: "dt-1",
+        userId: "u-1",
+        token: "fcm-token-9",
+        platform: "android",
+      }),
+    );
+    const svc = serviceWith({
+      user: {},
+      otpChallenge: {},
+      deviceToken: { upsert },
+    });
+    const out = (await svc.saveDeviceToken(
+      "u-1",
+      "fcm-token-9",
+      "android",
+    )) as {
+      userId: string;
+    };
+    expect(out.userId).toBe("u-1");
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { token: "fcm-token-9" },
+      }),
     );
   });
 });

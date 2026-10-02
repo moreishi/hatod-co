@@ -1,8 +1,15 @@
+import admin from "firebase-admin";
 import { PrismaClient } from "@prisma/client";
 import {
   CLOSED_CONVERSATION_RETENTION_DAYS,
   MESSAGE_RETENTION_DAYS,
 } from "@hailing/constants";
+import {
+  FcmPushProvider,
+  LogEmailProvider,
+  LogPushProvider,
+  LogSmsProvider,
+} from "@hailing/notifications";
 import { backoffMs } from "./backoff.js";
 import { resolveDatabaseUrl } from "./db-url.js";
 import { OutboxConsumer } from "./outbox.js";
@@ -13,7 +20,23 @@ const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 10_000);
 const PURGE_MS = 60 * 60 * 1000;
 
 const prisma = new PrismaClient();
-const outbox = new OutboxConsumer(prisma);
+
+/** Real FCM when service-account creds are present, log fallback otherwise. */
+function pushProvider() {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+    });
+    return new FcmPushProvider();
+  }
+  return new LogPushProvider();
+}
+
+const outbox = new OutboxConsumer(prisma, {
+  SMS: new LogSmsProvider(),
+  PUSH: pushProvider(),
+  EMAIL: new LogEmailProvider(),
+});
 
 console.log(`hailing worker starting (outbox poll every ${POLL_MS}ms)`);
 

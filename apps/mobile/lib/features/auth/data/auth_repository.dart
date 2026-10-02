@@ -33,6 +33,11 @@ class AuthRepository {
     );
   }
 
+  /// Registers the FCM device token for push (server upserts per token).
+  Future<void> registerDeviceToken(String token) async {
+    await api.post('/api/auth/device-token', {'token': token});
+  }
+
   Future<Session> verifyOtp(String challengeId, String code) async {
     final body = await api.post('/api/auth/otp/verify', {
       'challengeId': challengeId,

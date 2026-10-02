@@ -8,43 +8,70 @@ event-driven internals; the full blueprint is `HAILING_PROJECT_SPECIFICATION.md`
 | Layer         | Choice                                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------------------------- |
 | API           | NestJS 11 + Prisma (`apps/api`, `:3001`)                                                                 |
-| Admin portal  | Next.js 16 LTS + Tailwind (`apps/admin`, `:3000`)                                                        |
-| Agency portal | Next.js 16 LTS + Tailwind (`apps/agency`, `:3002`)                                                       |
-| Rider portal  | Next.js 16 LTS + Tailwind (`apps/rider`, `:3004`)                                                        |
-| Mobile        | Flutter rider + driver app (`apps/mobile`, SDK on PATH)                                                  |
-| Driver portal | Next.js 16 LTS + Tailwind (`apps/driver`, `:3005`)                                                       |
+| Admin portal  | Next.js 16 LTS + Tailwind + shadcn/ui (`apps/admin`, `:3000`)                                            |
+| Agency portal | Next.js 16 LTS + Tailwind + shadcn/ui (`apps/agency`, `:3002`)                                           |
+| Rider portal  | Next.js 16 LTS + Tailwind + shadcn/ui (`apps/rider`, `:3004`)                                            |
+| Mobile        | Flutter rider + driver app, role-routed (`apps/mobile`, SDK on PATH)                                     |
+| Driver portal | Next.js 16 LTS + Tailwind + shadcn/ui (`apps/driver`, `:3005`)                                           |
 | Worker        | Outbox consumer for notifications + retention purge (`apps/worker`)                                      |
 | Simulator     | Virtual riders/drivers over the real API (`apps/simulator`, Phases 1-2)                                  |
 | E2E           | Playwright suite on an isolated stack (`apps/e2e`, ports 3100–3102)                                      |
 | Shared        | `@hailing/constants`, `@hailing/data` (Cebu geo + pricing), `@hailing/notifications`, `@hailing/routing` |
-| Auth          | Phone OTP + password 2FA gate, HMAC tokens, server-side RBAC                                             |
+| Auth          | Phone OTP + self-registration, password 2FA gate for staff, HMAC tokens, server-side RBAC                |
 | Rides         | Request → assign → accept/reject → en route → arrived → in progress → completed/cancelled                |
 | Messaging     | One conversation per ride, TEXT/SYSTEM, SENT/DELIVERED/READ, idempotent sends, rate-limited              |
 | Realtime      | Socket.io gateway (`/realtime`, token-authed rooms for rides, agencies, conversations)                   |
-| Routing       | Provider abstraction + local haversine (Valhalla/GrabMaps adapters later); driver pings + proximity      |
-| DB dev        | SQLite LocalStage (`apps/api/prisma/dev.db`, Prisma migrations + seed)                                   |
+| Places        | Seeded place cache + Nominatim fallback (PH-scoped, 1 req/s), reverse geocode, same-area ranking          |
+| Routing       | OSRM (free, default) / haversine (`ROUTING_PROVIDER`) providers; driver pings + proximity matching       |
+| Maps          | flutter_map + CyclOSM tiles (no API key); GPS pickup, pin picker, live driver marker                     |
+| DB dev        | Postgres 16 + PostGIS in Docker (`pnpm db:up`, `apps/api/prisma/postgres/`); SQLite kept as no-Docker fallback |
 | DB prod       | Postgres 16 + PostGIS (Coolify; see `infrastructure/`)                                                   |
-| Realtime      | Socket.io gateway (`/realtime`); Redis adapter in production                                             |
-| Money         | Wallets + double-entry ledger (centavos); cash + wallet payments                                         |
+| Money         | Wallets + double-entry ledger (centavos); versioned fare schedules (admin-published); cash + wallet payments |
+| Push          | FCM device tokens + outbox delivery (`FcmPushProvider` when credentials are set, log provider otherwise) |
 
-## Quickstart (no Docker)
+## Quickstart (Postgres-first)
 
-Requirements: Node 20+, pnpm (`corepack prepare pnpm@latest --activate`).
+Requirements: Node 20+, pnpm (`corepack prepare pnpm@latest --activate`), Docker.
 
 ```powershell
 pnpm install
 Copy-Item .env.example .env
-pnpm --filter @hailing/api exec prisma migrate dev   # creates dev.db
-pnpm --filter @hailing/api run prisma:seed            # 45 users, 130 rides, 236 txns
-pnpm --filter @hailing/api run prisma:validate        # spec seed rules 26-30
-pnpm dev                                              # api :3001, admin :3000, agency :3002, worker
+pnpm db:up                                        # Postgres+PostGIS on :5432
+pnpm --filter @hailing/api run prisma:generate
+pnpm --filter @hailing/api run prisma:migrate     # postgres schema
+pnpm --filter @hailing/api run prisma:seed        # users, agencies, rides, wallets
+pnpm --filter @hailing/api run prisma:seed-places # Cebu place cache
+pnpm --filter @hailing/api run prisma:validate    # spec seed rules 26-30
+pnpm dev                                          # api :3001 + all portals + worker
 ```
 
-With Docker (full LocalStage: PostGIS, Redis, RabbitMQ, Mailhog, Adminer):
+No Docker? Point `DATABASE_URL` at SQLite (`file:./dev.db`) and use
+`apps/api/prisma/schema.prisma`; everything else is identical.
+
+With Docker for the full LocalStage (adds Redis, RabbitMQ, Mailhog, Adminer):
 
 ```powershell
 docker compose -f infrastructure/docker-compose.yml up --build
 ```
+
+## Mobile app (`apps/mobile`)
+
+Single Flutter app, role-routed after OTP login: riders land on the
+fullscreen-map home (GPS pickup → destination search or pin drop → vehicle
+carousel → live quote + route → book); approved drivers get the driver home
+(online toggle, GPS pings, incoming-offer cards with countdown +
+review-first for special requests, trip state machine). A session that
+carries both roles can switch modes from either profile.
+
+```powershell
+cd apps/mobile
+flutter pub get
+flutter run -d <device> --dart-define=API_URL=http://<lan-ip>:3001
+flutter test
+```
+
+The API must be reachable from the device: `10.0.2.2` on Android emulators,
+your LAN IP on physical devices.
 
 ## Sample accounts (OTP code shows in LocalStage)
 
@@ -63,7 +90,7 @@ Exercises the real API — never production (it needs OTP dev codes).
 
 ```powershell
 # terminal 1: backend with seeded dev data
-pnpm --filter @hailing/api exec prisma migrate dev
+pnpm --filter @hailing/api run prisma:migrate
 pnpm --filter @hailing/api run prisma:seed
 pnpm --filter @hailing/api run dev      # :3001
 
@@ -87,6 +114,25 @@ authenticate over HTTP, join token-authed WebSocket rooms, discover
 assignments through the conversation list, and chat over both HTTP and WS
 (`message.send` / delivered / read sync after reconnect).
 
+### Co-driving a real device
+
+```powershell
+# simulated passenger books at the live driver's GPS (refuses stale pings)
+pnpm --filter @hailing/api exec tsx prisma/passenger-booking.ts [rider] [driver] [tip] [changeFor] [note]
+# API-side co-driver for the rider phone: assign, accept, walk trip states
+pnpm --filter @hailing/simulator exec tsx src/drive-booking.ts [rider] [driver]
+```
+
+## Admin / agency operations
+
+- **Admin portal** (`:3000`): platform settings (fares + matching knobs),
+  versioned fare-schedule publishing (30s cache, audited), agencies
+  (create/suspend/detail + fleet), rides ledger, finance, audit log.
+- **Agency portal** (`:3002`): driver onboarding review (documents with
+  photo preview, required reject reasons, per-driver progress), driver
+  lifecycle (approve/reject/suspend/reactivate), dispatch board with
+  NO_DRIVERS rescue, fleet management, search + paging across queues.
+
 ## Loop (every change)
 
 ```powershell
@@ -99,15 +145,16 @@ changes. CI runs the same on every push/PR, including the E2E suite.
 ## Repo layout
 
 ```
-apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, notifications, realtime, messaging)
-apps/admin/      Platform admin portal (session, rides, finance, admins/invites, audit)
+apps/api/        NestJS backend (auth, rides, onboarding, agencies, admin, billing, places, notifications, realtime, messaging)
+apps/admin/      Platform admin portal (settings/fares, agencies, rides, finance, admins/invites, audit)
 apps/agency/     Agency portal (home, driver board, dispatch, documents, fleet)
 apps/rider/      Rider portal (book with fare quote, my rides, ride detail + chat)
 apps/driver/     Driver portal (online toggle, assignments, actions, chat)
-apps/worker/     Notification outbox consumer + retention purge
-apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept, chat_reconnect, message_retry)
+apps/mobile/     Flutter rider + driver app (maps, booking, trips, onboarding, chat, push)
+apps/worker/     Notification outbox consumer (log + FCM) + retention purge
+apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_before_accept, chat_reconnect, message_retry) + drive-booking co-driver
 apps/e2e/        Playwright specs on isolated ports + database
-packages/        constants, data, notifications
+packages/        constants, data, notifications, routing
 infrastructure/  docker-compose.yml (LocalStage), Dockerfiles per app
 docs/            localstage.md run guide
 ```
@@ -116,4 +163,4 @@ docs/            localstage.md run guide
 
 - **git-flow**: `master` (prod) ← `develop` ← `feature/*`. See CONTRIBUTING.md.
 - **TDD**: red test first for domain logic; full loop green before merge.
-- Never commit `.env`, `*.db`, or password hashes. Seeds refuse non-`file:` databases.
+- Never commit `.env`, `*.db`, or password hashes. Seeds refuse remote (non-local) databases.

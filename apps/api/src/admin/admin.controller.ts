@@ -15,6 +15,8 @@ import { RolesGuard } from "../auth/roles.guard.js";
 import { parsePage } from "../common/paging.js";
 import { AdminService } from "./admin.service.js";
 import type { AcceptInviteDto, InviteAdminDto } from "./admin.service.js";
+import { BillingService } from "../billing/billing.service.js";
+import type { PublishFareDto } from "../billing/billing.service.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
 
 interface AuthedRequest {
@@ -25,7 +27,10 @@ interface AuthedRequest {
 @UseGuards(RolesGuard)
 @Controller("admin")
 export class AdminController {
-  constructor(@Inject(AdminService) private readonly admin: AdminService) {}
+  constructor(
+    @Inject(AdminService) private readonly admin: AdminService,
+    @Inject(BillingService) private readonly billing: BillingService,
+  ) {}
 
   @Post("invitations")
   @Roles("ADMIN:SUPER_ADMIN")
@@ -57,8 +62,9 @@ export class AdminController {
     @Query("status") status?: string,
     @Query("take") take?: string,
     @Query("skip") skip?: string,
+    @Query("q") search?: string,
   ) {
-    return this.admin.listRides(status, parsePage({ take, skip }));
+    return this.admin.listRides(status, parsePage({ take, skip }), search);
   }
 
   @Get("transactions")
@@ -81,6 +87,18 @@ export class AdminController {
   @Roles("ADMIN:*")
   financeSummary() {
     return this.admin.financeSummary();
+  }
+
+  @Get("config")
+  @Roles("ADMIN:SUPER_ADMIN")
+  config() {
+    return this.admin.platformConfig();
+  }
+
+  @Post("fares/publish")
+  @Roles("ADMIN:SUPER_ADMIN")
+  publishFares(@Req() req: AuthedRequest, @Body() dto: PublishFareDto) {
+    return this.billing.publish(dto, req.user!.sub);
   }
 
   @Get("conversations/:id")

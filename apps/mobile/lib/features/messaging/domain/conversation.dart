@@ -21,6 +21,7 @@ class ChatMessage {
   final String type;
   final String content;
   final String status;
+  final DateTime? createdAt;
 
   const ChatMessage({
     required this.id,
@@ -28,6 +29,7 @@ class ChatMessage {
     required this.type,
     required this.content,
     required this.status,
+    this.createdAt,
   });
 
   bool get isSystem => type == 'SYSTEM';
@@ -38,5 +40,8 @@ class ChatMessage {
         type: json['type'] as String? ?? 'TEXT',
         content: json['content'] as String? ?? '',
         status: json['status'] as String? ?? 'SENT',
+        createdAt: json['createdAt'] == null
+            ? null
+            : DateTime.tryParse(json['createdAt'] as String),
       );
 }

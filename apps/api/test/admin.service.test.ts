@@ -3,7 +3,16 @@ import { AdminService } from "../src/admin/admin.service.js";
 import type { PrismaService } from "../src/prisma/prisma.service.js";
 
 function serviceWith(db: Record<string, unknown>) {
-  return new AdminService(db as unknown as PrismaService);
+  const billing = {
+    getPricing: async () => ({
+      baseFareCentavos: 4000,
+      minimumFareCentavos: 6000,
+      perKmCentavos: { MOTORCYCLE: 800 },
+      commissionTiers: [{ rateBps: 2000 }],
+    }),
+    getActiveSchedule: async () => null,
+  };
+  return new AdminService(db as unknown as PrismaService, billing as never);
 }
 
 describe("AdminService invitations (spec §16)", () => {
@@ -87,6 +96,22 @@ describe("AdminService invitations (spec §16)", () => {
     expect(await svc.financeSummary()).toMatchObject({ wallets: 23 });
   });
 
+  it("searches rides by route or driver name", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "ride-1" }]);
+    const svc = serviceWith({ ride: { findMany } });
+    const out = await svc.listRides("COMPLETED", { take: 10, skip: 0 }, "kcc");
+    expect(out).toHaveLength(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "COMPLETED",
+        }),
+      }),
+    );
+    const where = findMany.mock.calls[0][0].where;
+    expect(JSON.stringify(where).toLowerCase()).toContain("kcc");
+  });
+
   it("rejects used, expired, weak, and duplicate accepts", async () => {
     const mk = (inv: object) =>
       serviceWith({
@@ -150,5 +175,20 @@ describe("AdminService invitations (spec §16)", () => {
     );
     const logged = JSON.stringify(auditCreate.mock.calls[0]);
     expect(logged).not.toContain("hello");
+  });
+});
+
+describe("AdminService platform config", () => {
+  it("reports pricing, matching, and routing knobs", async () => {
+    const svc = serviceWith({});
+    const config = (await svc.platformConfig()) as {
+      pricing: { perKmCentavos: Record<string, number> };
+      matching: { radiusKm: number; offerTimeoutSec: number };
+      routingProvider: string;
+    };
+    expect(config.pricing.perKmCentavos["MOTORCYCLE"]).toBeGreaterThan(0);
+    expect(config.matching.radiusKm).toBeGreaterThan(0);
+    expect(config.matching.offerTimeoutSec).toBeGreaterThan(0);
+    expect(typeof config.routingProvider).toBe("string");
   });
 });

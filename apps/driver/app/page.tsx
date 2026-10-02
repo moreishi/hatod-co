@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { myRides } from "@/lib/api.js";
+import { LogoutButton } from "./logout-button.js";
 import { OnlineToggle } from "./online-toggle.js";
 
 const ACTIVE_STATES = [
@@ -15,9 +16,12 @@ export default async function DriverHome() {
     asDriver.find((r) => ACTIVE_STATES.includes(r.status)) ?? null;
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <p className="text-sm font-semibold tracking-wide text-brand-700 uppercase">
-        Hailing · Driver
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-semibold tracking-wide text-brand-700 uppercase">
+          Hailing A� Driver
+        </p>
+        <LogoutButton />
+      </div>
       <h1 className="mt-2 text-4xl font-bold text-brand-900">
         Ready to drive?
       </h1>

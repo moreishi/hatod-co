@@ -5,6 +5,7 @@ import 'core/storage/session_store.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/domain/role_routing.dart';
+import 'features/messaging/data/push_service.dart';
 import 'features/auth/domain/session.dart';
 import 'features/auth/presentation/create_profile_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
@@ -36,6 +37,7 @@ enum AppRoute {
 
 class _HailingAppState extends State<HailingApp> {
   late final AuthRepository _auth;
+  final PushService _push = PushService();
   AppRoute _route = AppRoute.splash;
   Session? _session;
   String _signupPhone = '';
@@ -54,12 +56,15 @@ class _HailingAppState extends State<HailingApp> {
       api: ApiClient(baseUrl: config.apiUrl),
       store: widget.store ?? MemorySessionStore(),
     );
+    // Best-effort push: silent no-op until a Firebase project is configured.
+    _push.init(_auth);
   }
 
   void _onSplashResolved(Session? session) {
     if (session == null) {
       setState(() => _route = AppRoute.welcome);
     } else {
+      _push.syncToken(_auth);
       setState(() {
         _session = session;
         _mode = null;
@@ -68,12 +73,15 @@ class _HailingAppState extends State<HailingApp> {
     }
   }
 
-  void _onAuthenticated(Session session, String phone) => setState(() {
-        _session = session;
-        _loginPhone = phone;
-        _mode = null;
-        _route = AppRoute.home;
-      });
+  void _onAuthenticated(Session session, String phone) {
+    _push.syncToken(_auth);
+    setState(() {
+      _session = session;
+      _loginPhone = phone;
+      _mode = null;
+      _route = AppRoute.home;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

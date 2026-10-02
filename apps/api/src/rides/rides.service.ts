@@ -8,14 +8,19 @@ import {
   WalletOwnerType,
 } from "@hailing/constants";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { quoteFare } from "./fare.js";
+import { quoteAllFares, quoteFare } from "./fare.js";
 import { RideTransitionGuard } from "./ride-transition.guard.js";
 import { NotificationsService } from "../notifications/notifications.service.js";
+import { BillingService } from "../billing/billing.service.js";
 import { MatchingService } from "../matching/matching.service.js";
 import { MessagingService } from "../messaging/messaging.service.js";
 import { RideEventsGateway } from "../realtime/ride-events.gateway.js";
-import { RoutingService, type LatLng } from "@hailing/routing";
-import { pricing } from "@hailing/data";
+import {
+  HaversineProvider,
+  OsrmProvider,
+  RoutingService,
+  type LatLng,
+} from "@hailing/routing";
 
 export interface RequestRideDto {
   pickupLabel: string;
@@ -24,16 +29,31 @@ export interface RequestRideDto {
   pickupLng?: number;
   dropoffLabel: string;
   dropoffBrgyCode: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   distanceKm: number;
   vehicleType: VehicleType;
   paymentMethod: PaymentMethod;
+  /** Optional extras shown to the driver (tip chips, change-for bill). */
+  tipCentavos?: number;
+  /** Cash tendered needing change, in centavos (50000/100000 presets). */
+  changeFor?: number;
+  /** Free-text note for the driver, max 140 chars. */
+  riderNote?: string;
 }
 
 const PLATFORM_WALLET_ID = "platform";
 
 @Injectable()
 export class RidesService {
-  private readonly routing = new RoutingService();
+  // Free OSRM fastest-route by default; ROUTING_PROVIDER=haversine pins the
+  // offline straight-line provider (used by tests). Valhalla/GrabMaps plug in
+  // here per the routing spec without touching callers.
+  private readonly routing = new RoutingService(
+    process.env.ROUTING_PROVIDER === "haversine"
+      ? new HaversineProvider()
+      : new OsrmProvider(),
+  );
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
@@ -43,6 +63,7 @@ export class RidesService {
     @Inject(RideEventsGateway) private readonly realtime: RideEventsGateway,
     @Inject(MessagingService) private readonly messaging: MessagingService,
     @Inject(MatchingService) private readonly matching: MatchingService,
+    @Inject(BillingService) private readonly billing: BillingService,
   ) {}
 
   /** Upfront quote from real coordinates (routing spec §35: separated from booking). */
@@ -54,11 +75,14 @@ export class RidesService {
     const route = await this.routing.calculateRoute(origin, destination, {
       vehicleType,
     });
+    const pricing = await this.billing.getPricing();
     return {
-      ...quoteFare({ vehicleType, distanceKm: route.distanceKm }),
+      ...quoteFare({ vehicleType, distanceKm: route.distanceKm, pricing }),
+      fares: quoteAllFares({ distanceKm: route.distanceKm, pricing }),
       distanceKm: route.distanceKm,
       durationSec: route.durationSec,
       provider: route.provider,
+      geometry: route.geometry,
     };
   }
 
@@ -66,9 +90,25 @@ export class RidesService {
     riderId: string,
     dto: RequestRideDto,
   ) {
+    const tipCentavos = dto.tipCentavos ?? 0;
+    if (!Number.isInteger(tipCentavos) || tipCentavos < 0) {
+      throw new Error("invalid tip");
+    }
+    if (
+      dto.changeFor !== undefined &&
+      (!Number.isInteger(dto.changeFor) || dto.changeFor <= 0)
+    ) {
+      throw new Error("invalid change amount");
+    }
+    const riderNote = (dto.riderNote ?? "").trim();
+    if (riderNote.length > 140) throw new Error("note too long");
+    if (dto.paymentMethod !== "CASH" && dto.paymentMethod !== "WALLET") {
+      throw new Error("invalid payment method");
+    }
     const { fareCentavos } = quoteFare({
       vehicleType: dto.vehicleType,
       distanceKm: dto.distanceKm,
+      pricing: await this.billing.getPricing(),
     });
     const created = await this.prisma.ride.create({
       data: {
@@ -80,8 +120,13 @@ export class RidesService {
         pickupLng: dto.pickupLng,
         dropoffLabel: dto.dropoffLabel,
         dropoffBrgyCode: dto.dropoffBrgyCode,
+        dropoffLat: dto.dropoffLat,
+        dropoffLng: dto.dropoffLng,
         distanceKm: dto.distanceKm,
         fareCentavos,
+        tipCentavos,
+        changeFor: dto.changeFor,
+        riderNote,
         vehicleType: dto.vehicleType,
         paymentMethod: dto.paymentMethod,
       },
@@ -281,6 +326,7 @@ export class RidesService {
     actorId: string,
   ) {
     if (!ride.driverId) throw new Error("cannot complete an unassigned ride");
+    const pricing = await this.billing.getPricing();
     const commission = Math.round(
       (ride.fareCentavos * pricing.commissionTiers[0].rateBps) / 10000,
     );
@@ -385,12 +431,48 @@ export class RidesService {
     });
   }
 
+  /**
+   * Latest GPS of the assigned driver, visible only to the trip's own rider
+   * (lets the rider map draw the approaching driver). Null when unassigned
+   * or when no ping exists yet.
+   */
+  async driverLocation(rideId: string, riderId: string) {
+    const ride = await this.prisma.ride.findUniqueOrThrow({
+      where: { id: rideId },
+    });
+    if (ride.riderId !== riderId) throw new Error("not your trip");
+    if (!ride.driverId) throw new Error("no driver assigned yet");
+    const ping = await this.prisma.locationPing.findFirst({
+      where: { driverId: ride.driverId },
+      orderBy: { recordedAt: "desc" },
+    });
+    if (!ping) return null;
+    return {
+      lat: ping.lat,
+      lng: ping.lng,
+      recordedAt: ping.recordedAt,
+      ageSec: Math.max(
+        0,
+        Math.round((Date.now() - ping.recordedAt.getTime()) / 1000),
+      ),
+    };
+  }
+
   getRide(id: string) {
     return this.prisma.ride.findUniqueOrThrow({
       where: { id },
       include: {
         events: { orderBy: { createdAt: "asc" } },
-        driver: { include: { user: { select: { displayName: true } } } },
+        driver: {
+          include: {
+            user: { select: { displayName: true } },
+            assignments: {
+              where: { isActive: true },
+              include: { vehicle: true },
+              take: 1,
+            },
+          },
+        },
       },
     });
   }
@@ -417,6 +499,17 @@ export class RidesService {
             where: { driverId: driver.id },
             orderBy: { requestedAt: "desc" },
             take: 25,
+            include: {
+              driver: {
+                include: {
+                  assignments: {
+                    where: { isActive: true },
+                    include: { vehicle: true },
+                    take: 1,
+                  },
+                },
+              },
+            },
           })
         : Promise.resolve([]),
     ]);

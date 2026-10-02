@@ -56,6 +56,23 @@ void main() {
       expect(sent?['displayName'], 'Maria');
     });
 
+    test('registerDeviceToken posts the FCM token', () async {
+      Map<String, dynamic>? sent;
+      String? path;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          path = req.url.path;
+          sent = jsonDecode(req.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({}), 200);
+        }),
+      );
+      final repo = AuthRepository(api: api, store: MemorySessionStore());
+      await repo.registerDeviceToken('fcm-9');
+      expect(path, endsWith('/device-token'));
+      expect(sent?['token'], 'fcm-9');
+    });
+
     test('restore drops expired tokens and signs out cleanly', () async {
       final api = ApiClient(baseUrl: 'http://x', httpClient: MockClient((_) async {
         return http.Response('{}', 200);

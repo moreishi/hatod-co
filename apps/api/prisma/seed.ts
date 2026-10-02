@@ -76,6 +76,7 @@ const barangays = cebu.cities.flatMap((c) =>
 async function reset() {
   // Dependency order: children first. Dev database only.
   await prisma.message.deleteMany();
+  await prisma.fareSchedule.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.ledgerTransaction.deleteMany();
   await prisma.rideEvent.deleteMany();
@@ -173,6 +174,19 @@ async function main() {
       ownerType: WalletOwnerType.PLATFORM,
       ownerId: PLATFORM_WALLET_ID,
       balanceCentavos: 0,
+    },
+  });
+
+  // Initial ACTIVE fare schedule mirrors the static pilot table.
+  await prisma.fareSchedule.create({
+    data: {
+      name: "pilot",
+      currency: pricing.currency,
+      baseFareCentavos: pricing.baseFareCentavos,
+      minimumFareCentavos: pricing.minimumFareCentavos,
+      perKmCentavos: pricing.perKmCentavos,
+      commissionTiers: pricing.commissionTiers,
+      isActive: true,
     },
   });
 
