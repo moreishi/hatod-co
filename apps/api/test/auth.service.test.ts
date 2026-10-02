@@ -12,9 +12,9 @@ import { TokenService } from "../src/auth/token.service.js";
 
 function serviceWith(stub: Record<string, Record<string, unknown>>) {
   const prisma = {
+    ...stub,
     user: stub.user,
     otpChallenge: stub.otpChallenge,
-    ...stub,
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
   return new AuthService(prisma, new TokenService(), notifications as never);
