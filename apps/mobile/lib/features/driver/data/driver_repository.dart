@@ -2,6 +2,26 @@ import '../../../core/network/api_client.dart';
 import '../../booking/domain/earning.dart';
 import '../../booking/domain/ride.dart';
 
+/// One pending dispatch offer: the ride plus its expiry (epoch millis).
+class DriverOffer {
+  final String rideId;
+  final int expiresAt;
+
+  const DriverOffer({required this.rideId, required this.expiresAt});
+
+  factory DriverOffer.fromJson(Map<String, dynamic> json) => DriverOffer(
+        rideId: json['rideId'] as String,
+        expiresAt: (json['expiresAt'] as num).toInt(),
+      );
+
+  /// Whole seconds left, floored at zero once lapsed.
+  int secondsLeft({DateTime? now}) {
+    final ms = expiresAt -
+        (now ?? DateTime.now()).millisecondsSinceEpoch;
+    return ms <= 0 ? 0 : ms ~/ 1000;
+  }
+}
+
 /// Driver operations against the real API (mobile spec §39–44).
 class DriverRepository {
   final ApiClient api;
@@ -22,6 +42,20 @@ class DriverRepository {
     final body = await api.get('/api/rides/mine') as Map<String, dynamic>;
     final rides = body['asDriver'] as List;
     return rides.map((r) => Ride.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  /// Pending dispatch offers awaiting this driver (30s TTL each).
+  Future<List<DriverOffer>> offers() async {
+    final body = await api.get('/api/drivers/me/offers') as List;
+    return body
+        .map((o) => DriverOffer.fromJson(o as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Full ride for an offered ride id (enriches the inbox cards).
+  Future<Ride> rideDetail(String rideId) async {
+    final body = await api.get('/api/rides/$rideId') as Map<String, dynamic>;
+    return Ride.fromJson(body);
   }
 
   Future<Ride> acceptOffer(String rideId) async {

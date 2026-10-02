@@ -7,10 +7,17 @@ import 'api_exception.dart';
 class ApiClient {
   final String baseUrl;
   final http.Client _http;
+
+  /// Fails any request hanging longer than this (unroutable host, dead
+  /// server) so the UI shows an error instead of spinning forever.
+  final Duration timeout;
   String? _token;
 
-  ApiClient({required this.baseUrl, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+  ApiClient({
+    required this.baseUrl,
+    http.Client? httpClient,
+    this.timeout = const Duration(seconds: 10),
+  }) : _http = httpClient ?? http.Client();
 
   void setToken(String? token) => _token = token;
 
@@ -22,7 +29,9 @@ class ApiClient {
   Future<dynamic> get(String path) async {
     late http.Response res;
     try {
-      res = await _http.get(Uri.parse('$baseUrl$path'), headers: _headers);
+      res = await _http
+          .get(Uri.parse('$baseUrl$path'), headers: _headers)
+          .timeout(timeout);
     } catch (e) {
       throw ApiException(ApiException.network.userMessage, technical: '$e');
     }
@@ -32,8 +41,10 @@ class ApiClient {
   Future<dynamic> post(String path, Map<String, dynamic> body) async {
     late http.Response res;
     try {
-      res = await _http.post(Uri.parse('$baseUrl$path'),
-          headers: _headers, body: jsonEncode(body));
+      res = await _http
+          .post(Uri.parse('$baseUrl$path'),
+              headers: _headers, body: jsonEncode(body))
+          .timeout(timeout);
     } catch (e) {
       throw ApiException(ApiException.network.userMessage, technical: '$e');
     }

@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
 
 export function AcceptForm({ token }: { token: string }) {
   const router = useRouter();
@@ -24,34 +27,32 @@ export function AcceptForm({ token }: { token: string }) {
     router.push("/login");
   }
 
-  const input =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-brand-500 focus:outline-none";
   return (
-    <div className="mt-8">
-      <label className="text-sm font-medium">
-        Phone number
-        <input
-          className={input}
+    <div className="mt-8 grid gap-4">
+      <div className="grid gap-2">
+        <Label htmlFor="accept-phone">Phone number</Label>
+        <Input
+          id="accept-phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-      </label>
-      <label className="mt-4 block text-sm font-medium">
-        Password (min 8 characters)
-        <input
-          className={input}
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="accept-password">Password (min 8 characters)</Label>
+        <Input
+          id="accept-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-      </label>
-      <button
-        className="mt-4 w-full rounded-lg bg-brand-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+      </div>
+      <Button
+        className="w-full"
         onClick={accept}
         disabled={!phone || password.length < 8}
       >
         Activate account
-      </button>
+      </Button>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>
   );

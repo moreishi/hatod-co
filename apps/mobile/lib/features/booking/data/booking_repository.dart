@@ -26,8 +26,13 @@ class BookingRepository {
     LatLng? pickup,
     required String dropoffLabel,
     required String dropoffBrgyCode,
+    LatLng? dropoff,
     required double distanceKm,
     required String vehicleType,
+    int tipCentavos = 0,
+    int? changeFor,
+    String riderNote = '',
+    String paymentMethod = 'CASH',
   }) async {
     final body = await api.post('/api/rides', {
       'pickupLabel': pickupLabel,
@@ -36,9 +41,14 @@ class BookingRepository {
       if (pickup != null) 'pickupLng': pickup.lng,
       'dropoffLabel': dropoffLabel,
       'dropoffBrgyCode': dropoffBrgyCode,
+      if (dropoff != null) 'dropoffLat': dropoff.lat,
+      if (dropoff != null) 'dropoffLng': dropoff.lng,
       'distanceKm': distanceKm,
       'vehicleType': vehicleType,
-      'paymentMethod': 'CASH',
+      'paymentMethod': paymentMethod,
+      'tipCentavos': tipCentavos,
+      if (changeFor != null) 'changeFor': changeFor,
+      'riderNote': riderNote,
     }) as Map<String, dynamic>;
     return Ride.fromJson(body);
   }
@@ -52,5 +62,24 @@ class BookingRepository {
   Future<Ride> rideDetail(String id) async {
     final body = await api.get('/api/rides/$id') as Map<String, dynamic>;
     return Ride.fromJson(body);
+  }
+
+  /// Rider cancel (or any allowed transition) on a booking.
+  Future<void> transition(String id, String to, {String? cancelReason}) async {
+    await api.post('/api/rides/$id/transition', {
+      'to': to,
+      if (cancelReason != null) 'cancelReason': cancelReason,
+    });
+  }
+
+  /// Latest driver GPS for a trip; null when unassigned or no ping yet.
+  Future<DriverPing?> driverLocation(String id) async {
+    try {
+      final body =
+          await api.get('/api/rides/$id/driver-location') as Map<String, dynamic>;
+      return DriverPing.fromJson(body);
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -341,15 +341,37 @@ export class MessagingService {
       messageId: message.id,
     });
     if (!this.realtime.isViewing(recipientId, conversation.id)) {
-      await this.notifications.enqueue({
-        userId: recipientId,
-        channel: "PUSH",
-        to: recipientId,
-        template: "NEW_MESSAGE",
-        variables: {
-          sender: senderId === conversation.driverId ? "driver" : "rider",
-        },
-      });
+      // One push row per registered device token; without any token the
+      // legacy user-id row keeps log providers and old tests working.
+      let tokens: { token: string }[] = [];
+      try {
+        tokens = await this.prisma.deviceToken.findMany({
+          where: { userId: recipientId },
+          select: { token: true },
+        });
+      } catch {
+        tokens = [];
+      }
+      const sender = senderId === conversation.driverId ? "driver" : "rider";
+      if (tokens.length === 0) {
+        await this.notifications.enqueue({
+          userId: recipientId,
+          channel: "PUSH",
+          to: recipientId,
+          template: "NEW_MESSAGE",
+          variables: { sender },
+        });
+      } else {
+        for (const t of tokens) {
+          await this.notifications.enqueue({
+            userId: recipientId,
+            channel: "PUSH",
+            to: t.token,
+            template: "NEW_MESSAGE",
+            variables: { sender },
+          });
+        }
+      }
     }
     return message;
   }

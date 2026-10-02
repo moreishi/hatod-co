@@ -54,3 +54,12 @@ export interface InvitationDto {
   role: string;
   expiresAt: string;
 }
+
+export interface AgencyDto {
+  id: string;
+  name: string;
+  slug: string;
+  cityCode: string;
+  contactPhone: string;
+  status: string;
+}

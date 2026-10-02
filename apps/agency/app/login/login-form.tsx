@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
 
 export function LoginForm() {
   const router = useRouter();
@@ -26,7 +29,8 @@ export function LoginForm() {
         devCode?: string;
         message?: string;
       };
-      if (!res.ok) throw new Error(body.message ?? "request failed");
+      if (!res.ok)
+        throw new Error(friendlyError(body.message ?? "request failed"));
       setChallengeId(body.challengeId ?? null);
       setDevCode(body.devCode ?? null);
     } catch (e) {
@@ -47,7 +51,7 @@ export function LoginForm() {
       });
       if (!res.ok) {
         const body = (await res.json()) as { message?: string };
-        throw new Error(body.message ?? "invalid code");
+        throw new Error(friendlyError(body.message ?? "invalid code"));
       }
       // Clear the prefetch cache so post-login navigation fetches fresh.
       router.refresh();
@@ -59,53 +63,83 @@ export function LoginForm() {
     }
   }
 
-  const input =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-brand-500 focus:outline-none";
-  const btn =
-    "mt-4 w-full rounded-lg bg-brand-700 px-4 py-2 font-medium text-white disabled:opacity-50";
+  function friendlyError(raw: string): string {
+    if (/account not found/i.test(raw)) {
+      return "No account for this number. Agency logins are created by your administrator — ask them to add you first.";
+    }
+    if (/failed to fetch|network|connection/i.test(raw)) {
+      return "Could not reach the server. Check your connection and try again.";
+    }
+    return raw;
+  }
 
   return (
     <div className="mt-8">
       {!challengeId ? (
         <>
-          <label className="text-sm font-medium">
-            Phone number
-            <input
-              className={input}
+          <p className="text-sm font-semibold">Step 1 of 2 — your number</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Use the mobile number your agency registered for you.
+          </p>
+          <div className="mt-3 grid gap-2">
+            <Label htmlFor="agency-phone">Phone number</Label>
+            <Input
+              id="agency-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="0917100003"
               inputMode="tel"
             />
-          </label>
-          <button className={btn} onClick={request} disabled={busy || !phone}>
+          </div>
+          <Button
+            className="mt-4 w-full"
+            onClick={request}
+            disabled={busy || !phone}
+          >
             Send code
-          </button>
+          </Button>
+          <p className="mt-3 text-xs text-slate-500">
+            We text you a 6-digit code. It stops working after 5 minutes.
+          </p>
         </>
       ) : (
         <>
-          <label className="text-sm font-medium">
-            One-time code
-            <input
-              className={input}
+          <p className="text-sm font-semibold">Step 2 of 2 — enter the code</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Sent to {phone}. Wrong number?{" "}
+            <button
+              className="font-medium text-brand-700 underline"
+              onClick={() => {
+                setChallengeId(null);
+                setCode("");
+                setError(null);
+              }}
+            >
+              Start over
+            </button>
+          </p>
+          <div className="mt-3 grid gap-2">
+            <Label htmlFor="agency-code">One-time code</Label>
+            <Input
+              id="agency-code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="123456"
               inputMode="numeric"
             />
-          </label>
+          </div>
           {devCode && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               LocalStage code: <strong>{devCode}</strong>
             </p>
           )}
-          <button
-            className={btn}
+          <Button
+            className="mt-4 w-full"
             onClick={verify}
             disabled={busy || code.length !== 6}
           >
             Verify
-          </button>
+          </Button>
         </>
       )}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

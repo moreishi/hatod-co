@@ -30,7 +30,8 @@ export interface Requester {
   roles: string[];
 }
 
-export type ReviewAction = "start-review" | "approve" | "reject";
+export type ReviewAction =
+  "start-review" | "approve" | "reject" | "suspend" | "reactivate";
 
 const SUBMITTABLE: readonly DriverStatus[] = [
   DriverStatus.APPLICANT,
@@ -118,19 +119,45 @@ export class OnboardingService {
     return doc;
   }
 
+  /**
+   * Self-service status for the driver app: own profile (null when never
+   * applied), own documents, and the static document requirements so the
+   * app can render the checklist without shipping the table.
+   */
+  async driverProfile(userId: string) {
+    const driver = await this.prisma.driver.findUnique({
+      where: { userId },
+      include: { documents: { orderBy: { createdAt: "desc" } } },
+    });
+    return {
+      driver,
+      documents: driver?.documents ?? [],
+      requirements: documentRequirements as {
+        driver: { type: string; label: string; required: boolean }[];
+      },
+    };
+  }
+
   async verifyDocument(
     documentId: string,
     status: DocumentStatus,
     reviewerId: string,
+    note?: string,
   ) {
     if (!VERDICTS.includes(status)) {
       throw new BadRequestException(
         `cannot set document to ${status} from review`,
       );
     }
+    const reviewNote = (note ?? "").trim().slice(0, 280);
     return this.prisma.document.update({
       where: { id: documentId },
-      data: { status, reviewedBy: reviewerId, reviewedAt: new Date() },
+      data: {
+        status,
+        reviewedBy: reviewerId,
+        reviewedAt: new Date(),
+        reviewNote: reviewNote.isEmpty ? null : reviewNote,
+      },
     });
   }
 
@@ -193,6 +220,20 @@ export class OnboardingService {
           );
         }
         return this.setStatus(driverId, DriverStatus.REJECTED, reviewerId);
+      case "suspend":
+        if (driver.status !== DriverStatus.ACTIVE) {
+          throw new BadRequestException(
+            `cannot suspend while driver is ${driver.status}`,
+          );
+        }
+        return this.setStatus(driverId, DriverStatus.SUSPENDED, reviewerId);
+      case "reactivate":
+        if (driver.status !== DriverStatus.SUSPENDED) {
+          throw new BadRequestException(
+            `cannot reactivate while driver is ${driver.status}`,
+          );
+        }
+        return this.setStatus(driverId, DriverStatus.ACTIVE, reviewerId);
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
 
 export function RideActions({
   rideId,
@@ -36,28 +37,25 @@ export function RideActions({
     <div className="mt-4 flex flex-wrap gap-3">
       {status === "ASSIGNED" && !accepted && (
         <>
-          <button
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white"
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700"
             onClick={() => act("accept")}
           >
             Accept
-          </button>
-          <button
-            className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700"
+          </Button>
+          <Button
+            variant="outline"
+            className="border-red-300 text-red-700 hover:text-red-700"
             onClick={() => act("reject")}
           >
             Reject
-          </button>
+          </Button>
         </>
       )}
       {next.map((to) => (
-        <button
-          key={to}
-          className="rounded-lg bg-brand-700 px-4 py-2 text-sm text-white"
-          onClick={() => act("transition", to)}
-        >
+        <Button key={to} onClick={() => act("transition", to)}>
           → {to}
-        </button>
+        </Button>
       ))}
       {error && <p className="w-full text-sm text-red-600">{error}</p>}
     </div>

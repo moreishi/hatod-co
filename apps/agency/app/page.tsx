@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { myAgencies } from "@/lib/api.js";
+import { LogoutButton } from "./logout-button.js";
 
 export default async function AgencyHome() {
   const agencies = await myAgencies();
   return (
     <main className="mx-auto max-w-5xl px-6 py-16">
-      <p className="text-sm font-semibold tracking-wide text-brand-700 uppercase">
-        Hailing · Agency Portal
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-semibold tracking-wide text-brand-700 uppercase">
+          Hailing A� Agency Portal
+        </p>
+        <LogoutButton />
+      </div>
       <h1 className="mt-2 text-4xl font-bold text-brand-900">Your agencies</h1>
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
         {agencies.map((agency) => (

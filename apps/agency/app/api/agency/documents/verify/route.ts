@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { apiAsUser } from "@/lib/api.js";
 
 export async function POST(req: Request) {
-  const { documentId, status } = (await req.json()) as {
+  const { documentId, status, note } = (await req.json()) as {
     documentId?: string;
     status?: string;
+    note?: string;
   };
   if (!documentId || !status) {
     return NextResponse.json(
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       await apiAsUser(`/onboarding/documents/${documentId}/verify`, {
         method: "POST",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, note }),
       }),
     );
   } catch (e) {

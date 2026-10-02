@@ -12,6 +12,7 @@ import { Roles } from "../auth/roles.decorator.js";
 import { RolesGuard } from "../auth/roles.guard.js";
 import { LocationService, type PingDto } from "../location/location.service.js";
 import { MatchingService } from "../matching/matching.service.js";
+import { OnboardingService } from "../onboarding/onboarding.service.js";
 import { RidesService } from "../rides/rides.service.js";
 import type { Requester } from "../onboarding/onboarding.service.js";
 
@@ -27,7 +28,14 @@ export class DriversController {
     @Inject(RidesService) private readonly rides: RidesService,
     @Inject(LocationService) private readonly location: LocationService,
     @Inject(MatchingService) private readonly matching: MatchingService,
+    @Inject(OnboardingService) private readonly onboarding: OnboardingService,
   ) {}
+
+  @Get("me")
+  @Roles("RIDER", "DRIVER:*")
+  me(@Req() req: AuthedRequest) {
+    return this.onboarding.driverProfile(req.user!.sub);
+  }
 
   @Post("me/online")
   @Roles("DRIVER:*")

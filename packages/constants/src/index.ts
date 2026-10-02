@@ -103,6 +103,13 @@ export const VehicleType = {
   SEDAN: "SEDAN",
   SUV: "SUV",
   VAN: "VAN",
+  TAXI: "TAXI",
+  CAR_4SEATER: "CAR_4SEATER",
+  CAR_6SEATER: "CAR_6SEATER",
+  TRUCK_600KG: "TRUCK_600KG",
+  TRUCK_600KG_MOVER: "TRUCK_600KG_MOVER",
+  TRUCK_1000KG: "TRUCK_1000KG",
+  TRUCK_2000KG: "TRUCK_2000KG",
 } as const;
 export type VehicleType = (typeof VehicleType)[keyof typeof VehicleType];
 

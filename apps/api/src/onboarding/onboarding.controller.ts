@@ -54,9 +54,14 @@ export class OnboardingController {
   verifyDocument(
     @Req() req: AuthedRequest,
     @Param("id") id: string,
-    @Body() body: { status: DocumentStatus },
+    @Body() body: { status: DocumentStatus; note?: string },
   ) {
-    return this.onboarding.verifyDocument(id, body.status, req.user!.sub);
+    return this.onboarding.verifyDocument(
+      id,
+      body.status,
+      req.user!.sub,
+      body.note,
+    );
   }
 
   @Post("drivers/:id/review")

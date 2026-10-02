@@ -98,6 +98,12 @@ export class RidesController {
     return this.rides.myRides(req.user!.sub);
   }
 
+  @Get(":id/driver-location")
+  @Roles("RIDER")
+  driverLocation(@Req() req: AuthedRequest, @Param("id") id: string) {
+    return this.rides.driverLocation(id, req.user!.sub);
+  }
+
   @Get(":id")
   @Roles("RIDER")
   detail(@Param("id") id: string) {

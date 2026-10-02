@@ -38,6 +38,41 @@ void main() {
       expect(authed, isNull); // verify call itself is unauthenticated
     });
 
+    test('register creates the account and returns the challenge', () async {
+      Map<String, dynamic>? sent;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          sent = jsonDecode(req.body) as Map<String, dynamic>;
+          return http.Response(
+              jsonEncode({'challengeId': 'ch-9'}), 200);
+        }),
+      );
+      final repo = AuthRepository(api: api, store: MemorySessionStore());
+      final challenge =
+          await repo.register('09170000999', displayName: 'Maria');
+      expect(challenge.challengeId, 'ch-9');
+      expect(sent?['phone'], '09170000999');
+      expect(sent?['displayName'], 'Maria');
+    });
+
+    test('registerDeviceToken posts the FCM token', () async {
+      Map<String, dynamic>? sent;
+      String? path;
+      final api = ApiClient(
+        baseUrl: 'http://x',
+        httpClient: MockClient((req) async {
+          path = req.url.path;
+          sent = jsonDecode(req.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({}), 200);
+        }),
+      );
+      final repo = AuthRepository(api: api, store: MemorySessionStore());
+      await repo.registerDeviceToken('fcm-9');
+      expect(path, endsWith('/device-token'));
+      expect(sent?['token'], 'fcm-9');
+    });
+
     test('restore drops expired tokens and signs out cleanly', () async {
       final api = ApiClient(baseUrl: 'http://x', httpClient: MockClient((_) async {
         return http.Response('{}', 200);

@@ -9,7 +9,11 @@ class OtpScreen extends StatefulWidget {
   final String phone;
   final Future<void> Function(String code) onVerify;
 
-  const OtpScreen({super.key, required this.phone, required this.onVerify});
+  /// LocalStage dev code, shown for testing like the login screen does.
+  final String? devCode;
+
+  const OtpScreen(
+      {super.key, required this.phone, required this.onVerify, this.devCode});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -73,6 +77,12 @@ class _OtpScreenState extends State<OtpScreen> {
                   if (!_busy) _submit(code);
                 },
               ),
+              if (widget.devCode != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('LocalStage code: ${widget.devCode}',
+                      key: const Key('devCode')),
+                ),
               const SizedBox(height: 16),
               Center(
                 child: Text(

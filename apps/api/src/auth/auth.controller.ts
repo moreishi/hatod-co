@@ -4,13 +4,19 @@ import { Roles, Public } from "./roles.decorator.js";
 import { RolesGuard } from "./roles.guard.js";
 
 interface AuthedRequest {
-  user?: { sub: string; jti?: string };
+  user?: { sub: string; jti?: string; roles?: string[] };
 }
 
 @UseGuards(RolesGuard)
 @Controller("auth")
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
+
+  @Public()
+  @Post("register")
+  register(@Body() body: { phone: string; displayName?: string }) {
+    return this.auth.register(body.phone, body.displayName);
+  }
 
   @Public()
   @Post("otp/request")
@@ -35,5 +41,14 @@ export class AuthController {
   @Roles("RIDER")
   logout(@Req() req: AuthedRequest) {
     return this.auth.logout(req.user!.sub, req.user?.jti);
+  }
+
+  @Post("device-token")
+  @Roles("RIDER")
+  deviceToken(
+    @Req() req: AuthedRequest,
+    @Body() body: { token: string; platform?: string },
+  ) {
+    return this.auth.saveDeviceToken(req.user!.sub, body.token, body.platform);
   }
 }

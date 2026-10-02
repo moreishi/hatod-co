@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { Label } from "@/components/ui/label.js";
 
 export function LoginForm() {
   const router = useRouter();
@@ -60,53 +63,52 @@ export function LoginForm() {
     }
   }
 
-  const input =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-brand-500 focus:outline-none";
-  const btn =
-    "mt-4 w-full rounded-lg bg-brand-700 px-4 py-2 font-medium text-white disabled:opacity-50";
-
   return (
     <div className="mt-8">
       {!challengeId ? (
         <>
-          <label className="text-sm font-medium">
-            Phone number
-            <input
-              className={input}
+          <div className="grid gap-2">
+            <Label htmlFor="admin-phone">Phone number</Label>
+            <Input
+              id="admin-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="0917100000"
               inputMode="tel"
             />
-          </label>
-          <button className={btn} onClick={request} disabled={busy || !phone}>
+          </div>
+          <Button
+            className="mt-4 w-full"
+            onClick={request}
+            disabled={busy || !phone}
+          >
             Send code
-          </button>
+          </Button>
         </>
       ) : (
         <>
-          <label className="text-sm font-medium">
-            One-time code
-            <input
-              className={input}
+          <div className="grid gap-2">
+            <Label htmlFor="admin-code">One-time code</Label>
+            <Input
+              id="admin-code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="123456"
               inputMode="numeric"
             />
-          </label>
+          </div>
           {devCode && (
             <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               LocalStage code: <strong>{devCode}</strong>
             </p>
           )}
-          <button
-            className={btn}
+          <Button
+            className="mt-4 w-full"
             onClick={verify}
             disabled={busy || code.length !== 6}
           >
             Verify
-          </button>
+          </Button>
         </>
       )}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

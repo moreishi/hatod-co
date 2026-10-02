@@ -9,7 +9,7 @@ packages:
   - "apps/worker"
   - "apps/rider"
   - "apps/driver"
-  - "apps/mobile"
+  - "!apps/mobile"
   - "packages/*"
 allowBuilds:
   "@prisma/client": true

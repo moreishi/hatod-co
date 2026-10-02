@@ -37,6 +37,7 @@ export interface DriverDto {
   status: string;
   user: { displayName: string; phone: string };
   assignments: { vehicle: { plateNo: string; type: string } }[];
+  documents: { type: string; status: string }[];
 }
 
 /** Server components/handlers: forward the session cookie as a Bearer token. */
@@ -91,6 +92,8 @@ export interface DocumentDto {
   type: string;
   status: string;
   storageKey: string;
+  reviewNote?: string | null;
+  driverId: string | null;
   driver: { user: { displayName: string } } | null;
 }
 
@@ -98,9 +101,18 @@ export function agencyVehicles(agencyId: string) {
   return apiAsUser<VehicleDto[]>(`/agencies/${agencyId}/vehicles`);
 }
 
-export function agencyDocuments(agencyId: string, status?: string) {
+export function agencyDocuments(
+  agencyId: string,
+  opts: { status?: string; q?: string; take?: number; skip?: number } = {},
+) {
+  const params = new URLSearchParams();
+  if (opts.status) params.set("status", opts.status);
+  if (opts.q) params.set("q", opts.q);
+  if (opts.take) params.set("take", String(opts.take));
+  if (opts.skip) params.set("skip", String(opts.skip));
+  const query = params.toString();
   return apiAsUser<DocumentDto[]>(
-    `/agencies/${agencyId}/documents${status ? `?status=${status}` : ""}`,
+    `/agencies/${agencyId}/documents${query ? `?${query}` : ""}`,
   );
 }
 

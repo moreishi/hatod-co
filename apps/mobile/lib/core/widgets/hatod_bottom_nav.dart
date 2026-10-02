@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 
-/// Spec §3 Bottom nav h-68 4 tabs active green.
+/// Bottom nav h-68 4 tabs active green: Home / Orders / Favorites / Me.
 class HatodBottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
@@ -16,9 +16,9 @@ class HatodBottomNav extends StatelessWidget {
       onDestinationSelected: onTap,
       destinations: const [
         NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-        NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-        NavigationDestination(icon: Icon(Icons.message_outlined), label: 'Messages'),
-        NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+        NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Orders'),
+        NavigationDestination(icon: Icon(Icons.favorite_outline), label: 'Favorites'),
+        NavigationDestination(icon: Icon(Icons.person_outline), label: 'Me'),
       ],
     );
   }

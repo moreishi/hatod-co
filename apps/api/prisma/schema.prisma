@@ -33,6 +33,17 @@ model User {
   notifications     Notification[]
   otpChallenges     OtpChallenge[]
   sessions          Session[]
+  deviceTokens    DeviceToken[]
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("android")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AdminRoleAssignment {
@@ -179,12 +190,17 @@ model Ride {
   pickupBrgyCode  String
   pickupLat       Float?
   pickupLng       Float?
-  dropoffLabel    String
-  dropoffBrgyCode String
-  distanceKm      Float?
-  fareCentavos    Int
-  vehicleType     String?
-  paymentMethod   String    @default("CASH") // CASH | WALLET
+    dropoffLabel    String
+    dropoffBrgyCode String
+    dropoffLat      Float?
+    dropoffLng      Float?
+    distanceKm      Float?
+    fareCentavos    Int
+    tipCentavos     Int       @default(0)
+    changeFor       Int?
+    riderNote       String?   @default("")
+    vehicleType     String?
+    paymentMethod   String    @default("CASH") // CASH | WALLET
   cancelReason    String?
   acceptedAt      DateTime?
   requestedAt     DateTime  @default(now())
@@ -243,6 +259,19 @@ model LedgerTransaction {
 
 // ---------- Compliance (spec §24) ----------
 
+model FareSchedule {
+  id                  String   @id @default(cuid())
+  name                String
+  currency            String   @default("PHP")
+  baseFareCentavos    Int
+  minimumFareCentavos Int
+  perKmCentavos       Json
+  commissionTiers     Json
+  isActive            Boolean  @default(false)
+  createdBy           String?
+  createdAt           DateTime @default(now())
+}
+
 model Document {
   id          String    @id @default(cuid())
   driverId    String?
@@ -252,6 +281,7 @@ model Document {
   status      String    @default("PENDING") // PENDING | VERIFIED | REJECTED | EXPIRED
   reviewedBy  String?
   reviewedAt  DateTime?
+  reviewNote  String?
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -349,4 +379,24 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
+}
+
+// ---------- Places (routing spec §27–§29) ----------
+// HATOD-owned location cache: seeded POIs + every Nominatim fallback hit.
+// One lookup is persisted once; all later searches are local DB hits.
+
+model Place {
+  id         String   @id @default(cuid())
+  providerId String   @unique // seed:<slug> | nominatim <osm_type>/<osm_id>
+  name       String
+  address    String
+  lat        Float
+  lng        Float
+  source     String   @default("seed") // seed | nominatim
+  areaKey    String   @default("") // Nominatim ISO3166-2 code, lowercased (ph-12, ph-07)
+  hitCount   Int      @default(0)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([name])
 }

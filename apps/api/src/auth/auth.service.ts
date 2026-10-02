@@ -1,4 +1,10 @@
-import { Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { compare } from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import {
@@ -23,29 +29,75 @@ export class AuthService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  /**
+   * Self-registration: creates the account (RIDER role via verify) and
+   * immediately issues the first OTP challenge, so signup flows straight
+   * into verification. Existing numbers get 409 and should log in.
+   */
+  async register(
+    phone: string,
+    displayName?: string,
+  ): Promise<{ challengeId: string; devCode?: string }> {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 7 || digits.length > 15)
+      throw new BadRequestException("invalid phone number");
+    const name = (displayName ?? "").trim();
+    if (name.length > 100)
+      throw new BadRequestException("display name too long");
+    const existing = await this.prisma.user.findUnique({ where: { phone } });
+    if (existing) throw new ConflictException("account exists");
+    const user = await this.prisma.user.create({
+      data: { phone, displayName: name },
+    });
+    return this.issueChallenge(user.id, phone);
+  }
+
   /** Step 1: issue an OTP challenge for a phone number. Dev returns the code. */
   async requestOtp(
     phone: string,
   ): Promise<{ challengeId: string; devCode?: string }> {
     const user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user || !user.isActive) throw new Error("account not found");
+    if (!user || !user.isActive)
+      throw new NotFoundException("account not found");
+    return this.issueChallenge(user.id, phone);
+  }
+
+  private async issueChallenge(
+    userId: string,
+    phone: string,
+  ): Promise<{ challengeId: string; devCode?: string }> {
     const code = generateOtp();
     const challenge = await this.prisma.otpChallenge.create({
       data: {
-        userId: user.id,
+        userId,
         codeHash: hashOtp(code),
         expiresAt: new Date(Date.now() + OTP_TTL_MS),
       },
     });
     // Outbox for the SMS provider; LocalStage still exposes the code.
     await this.notifications.enqueue({
-      userId: user.id,
+      userId,
       channel: "SMS",
       to: phone,
       template: "OTP_CODE",
       variables: { code },
     });
     return { challengeId: challenge.id, ...(DEV ? { devCode: code } : {}) };
+  }
+
+  /** Registers an FCM device token for push (upsert: reinstalls + account switches). */
+  async saveDeviceToken(userId: string, token: string, platform?: string) {
+    const clean = token.trim();
+    if (!clean) throw new BadRequestException("device token required");
+    return this.prisma.deviceToken.upsert({
+      where: { token: clean },
+      update: { userId, platform: platform?.trim() || "android" },
+      create: {
+        userId,
+        token: clean,
+        platform: platform?.trim() || "android",
+      },
+    });
   }
 
   /** Step 2: verify OTP → signed token carrying the user's roles. */
@@ -65,16 +117,17 @@ export class AuthService {
         },
       },
     });
-    if (!challenge) throw new Error("challenge not found");
-    if (challenge.expiresAt < new Date()) throw new Error("code expired");
+    if (!challenge) throw new NotFoundException("challenge not found");
+    if (challenge.expiresAt < new Date())
+      throw new BadRequestException("code expired");
     if (challenge.attempts >= OTP_MAX_ATTEMPTS)
-      throw new Error("too many attempts");
+      throw new BadRequestException("too many attempts");
     if (!otpMatches(code, challenge.codeHash)) {
       await this.prisma.otpChallenge.update({
         where: { id: challenge.id },
         data: { attempts: challenge.attempts + 1 },
       });
-      throw new Error("invalid code");
+      throw new BadRequestException("invalid code");
     }
     await this.prisma.otpChallenge.delete({ where: { id: challenge.id } });
     const roles = this.resolveRoles(challenge.user as RolesSource);

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { VehicleType } from "@hailing/constants";
+import { Button } from "@/components/ui/button.js";
 
 export function BookingForm() {
   const router = useRouter();
@@ -135,20 +136,21 @@ export function BookingForm() {
         </p>
       )}
       <div className="mt-4 flex gap-3">
-        <button
-          className="flex-1 rounded-lg border border-brand-700 px-4 py-2 font-medium text-brand-700 disabled:opacity-50"
+        <Button
+          variant="outline"
+          className="flex-1"
           onClick={getQuote}
           disabled={busy}
         >
           Get fare
-        </button>
-        <button
-          className="flex-1 rounded-lg bg-brand-700 px-4 py-2 font-medium text-white disabled:opacity-50"
+        </Button>
+        <Button
+          className="flex-1"
           onClick={requestRide}
           disabled={busy || !quote}
         >
           Book ride
-        </button>
+        </Button>
       </div>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>

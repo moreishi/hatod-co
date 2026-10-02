@@ -7,7 +7,14 @@
     "MOTORCYCLE": 800,
     "SEDAN": 1500,
     "SUV": 1800,
-    "VAN": 2200
+    "VAN": 2200,
+    "TAXI": 1500,
+    "CAR_4SEATER": 1600,
+    "CAR_6SEATER": 2000,
+    "TRUCK_600KG": 2500,
+    "TRUCK_600KG_MOVER": 3000,
+    "TRUCK_1000KG": 3500,
+    "TRUCK_2000KG": 4500
   },
   "minimumFareCentavos": 6000,
   "commissionTiers": [

@@ -50,6 +50,22 @@ void main() {
       expect(find.textContaining('Honda Click'), findsOneWidget);
     });
 
+    testWidgets('driver card has its own tinted surface', (tester) async {
+      await tester.pumpWidget(const MaterialApp(
+          home: Scaffold(
+              body: DriverCard(
+                  name: 'Carlos Reyes',
+                  rating: 4.9,
+                  rides: 120,
+                  vehicle: 'Honda Click',
+                  plate: 'GAK 1234',
+                  eta: '3 min away'))));
+      final card = tester.widget<Container>(find.byKey(const Key('driverCard')));
+      final decoration = card.decoration as BoxDecoration?;
+      expect(decoration?.color, isNotNull);
+      expect(decoration?.color, isNot(equals(Colors.white)));
+    });
+
     testWidgets('wallet hero shows balance', (tester) async {
       await tester.pumpWidget(const MaterialApp(
           home: WalletHero(amount: '₱120.00')));
@@ -74,9 +90,9 @@ void main() {
               bottomNavigationBar:
                   HatodBottomNav(index: 0, onTap: (_) {}))));
       expect(find.text('Home'), findsOneWidget);
-      expect(find.text('History'), findsOneWidget);
-      expect(find.text('Messages'), findsOneWidget);
-      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('Orders'), findsOneWidget);
+      expect(find.text('Favorites'), findsOneWidget);
+      expect(find.text('Me'), findsOneWidget);
     });
 
     testWidgets('sheet + fare row render', (tester) async {
@@ -108,10 +124,11 @@ void main() {
   group('hatod-ui-spec §4 AuthStack', () {
     testWidgets('signup validates phone', (tester) async {
       await tester.pumpWidget(
-          MaterialApp(home: SignupScreen(onContinue: (_) {})));
+          const MaterialApp(home: SignupScreen()));
       await tester.tap(find.text('Continue'));
       await tester.pump();
       expect(find.text('Phone required'), findsOneWidget);
+      expect(find.text('Name required'), findsOneWidget);
     });
 
     testWidgets('create profile validates name', (tester) async {
@@ -130,7 +147,8 @@ void main() {
     });
 
     testWidgets('signup has no password or Google options', (tester) async {
-      await tester.pumpWidget(MaterialApp(home: SignupScreen(onContinue: (_) {})));
+      await tester.pumpWidget(
+          const MaterialApp(home: SignupScreen()));
       expect(find.text('Continue'), findsOneWidget);
       expect(find.textContaining('Password'), findsNothing);
       expect(find.textContaining('Google'), findsNothing);
@@ -150,8 +168,15 @@ void main() {
     });
 
     testWidgets('profile menu renders', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
-          home: ProfileScreen(name: 'Juan Dela Cruz', phone: '+63')));
+      await tester.pumpWidget(MaterialApp(
+          home: ProfileScreen(
+              name: 'Juan Dela Cruz',
+              phone: '+63',
+              onHistory: () {},
+              onWallet: () {},
+              onEdit: () {},
+              onHelp: () {},
+              onSignOut: () {})));
       expect(find.text('Wallet'), findsOneWidget);
       expect(find.text('Ride History'), findsOneWidget);
     });

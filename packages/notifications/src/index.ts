@@ -51,3 +51,4 @@ export type TemplateName = keyof typeof Templates;
 export { LogSmsProvider } from "./log-providers.js";
 export { LogPushProvider } from "./log-providers.js";
 export { LogEmailProvider } from "./log-providers.js";
+export { FcmPushProvider } from "./fcm-provider.js";

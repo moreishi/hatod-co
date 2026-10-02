@@ -1,13 +1,25 @@
 import { VehicleType } from "@hailing/constants";
-import { pricing } from "@hailing/data";
+import { pricing as staticPricing } from "@hailing/data";
 
 export interface FareInput {
   vehicleType: VehicleType;
   distanceKm: number;
 }
 
+/** A fare table: either the static pilot JSON or one DB FareSchedule row. */
+export interface FarePricing {
+  baseFareCentavos: number;
+  minimumFareCentavos: number;
+  perKmCentavos: Record<string, number>;
+  commissionTiers: { rateBps: number }[];
+}
+
 /** Pure fare math — never hard-code fares (spec rule 37). Amounts in centavos. */
-export function quoteFare({ vehicleType, distanceKm }: FareInput): {
+export function quoteFare({
+  vehicleType,
+  distanceKm,
+  pricing = staticPricing,
+}: FareInput & { pricing?: FarePricing }): {
   fareCentavos: number;
   commissionCentavos: number;
   driverCentavos: number;
@@ -27,4 +39,20 @@ export function quoteFare({ vehicleType, distanceKm }: FareInput): {
     commissionCentavos,
     driverCentavos: fareCentavos - commissionCentavos,
   };
+}
+
+/** Every fleet fare off one distance — one route, N prices, no extra routing. */
+export function quoteAllFares({
+  distanceKm,
+  pricing,
+}: {
+  distanceKm: number;
+  pricing?: FarePricing;
+}): Record<VehicleType, number> {
+  return Object.fromEntries(
+    Object.values(VehicleType).map((vehicleType) => [
+      vehicleType,
+      quoteFare({ vehicleType, distanceKm, pricing }).fareCentavos,
+    ]),
+  ) as Record<VehicleType, number>;
 }

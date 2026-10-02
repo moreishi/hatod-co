@@ -1,3 +1,8 @@
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { hashSync } from "bcryptjs";
 import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../src/auth/auth.service.js";
@@ -7,9 +12,9 @@ import { TokenService } from "../src/auth/token.service.js";
 
 function serviceWith(stub: Record<string, Record<string, unknown>>) {
   const prisma = {
+    ...stub,
     user: stub.user,
     otpChallenge: stub.otpChallenge,
-    session: stub.session,
   } as unknown as PrismaService;
   const notifications = { enqueue: vi.fn().mockResolvedValue({}) };
   return new AuthService(prisma, new TokenService(), notifications as never);
@@ -70,6 +75,9 @@ describe("AuthService OTP flow", () => {
     await expect(noUser.requestOtp("09000000000")).rejects.toThrow(
       "account not found",
     );
+    await expect(noUser.requestOtp("09000000000")).rejects.toThrowError(
+      NotFoundException,
+    );
 
     const mk = (challenge: object) =>
       serviceWith({
@@ -92,6 +100,9 @@ describe("AuthService OTP flow", () => {
       "invalid code",
     );
     await expect(
+      mk({ ...good }).verifyOtp("ch", "000000"),
+    ).rejects.toThrowError(BadRequestException);
+    await expect(
       mk({ ...good, expiresAt: new Date(Date.now() - 1000) }).verifyOtp(
         "ch",
         "111111",
@@ -103,6 +114,88 @@ describe("AuthService OTP flow", () => {
     await expect(
       mk(null as unknown as object).verifyOtp("ch", "111111"),
     ).rejects.toThrow("challenge not found");
+  });
+});
+
+describe("AuthService self-registration", () => {
+  const regStubs = () => ({
+    user: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi
+        .fn()
+        .mockImplementation((args: { data: { phone: string } }) =>
+          Promise.resolve({ id: "user-9", ...args.data, isActive: true }),
+        ),
+    },
+    otpChallenge: {
+      create: vi.fn().mockImplementation(() => Promise.resolve({ id: "ch-9" })),
+    },
+  });
+
+  it("creates the user and issues an OTP challenge", async () => {
+    const stubs = regStubs();
+    const svc = serviceWith(stubs);
+    const out = await svc.register("09170000999", "Maria Santos");
+    expect(stubs.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          phone: "09170000999",
+          displayName: "Maria Santos",
+        }),
+      }),
+    );
+    expect(out.challengeId).toBe("ch-9");
+  });
+
+  it("rejects duplicates with 409 and bad phones with 400", async () => {
+    const taken = serviceWith({
+      ...regStubs(),
+      user: {
+        findUnique: vi.fn().mockResolvedValue({ id: "u-x", isActive: true }),
+        create: vi.fn(),
+      },
+    });
+    await expect(taken.register("09170000000")).rejects.toThrowError(
+      ConflictException,
+    );
+    const fresh = serviceWith(regStubs());
+    await expect(fresh.register("abc")).rejects.toThrowError(
+      BadRequestException,
+    );
+    await expect(fresh.register("123")).rejects.toThrowError(
+      BadRequestException,
+    );
+  });
+});
+
+describe("AuthService device tokens", () => {
+  it("upserts the token onto the user", async () => {
+    const upsert = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        id: "dt-1",
+        userId: "u-1",
+        token: "fcm-token-9",
+        platform: "android",
+      }),
+    );
+    const svc = serviceWith({
+      user: {},
+      otpChallenge: {},
+      deviceToken: { upsert },
+    });
+    const out = (await svc.saveDeviceToken(
+      "u-1",
+      "fcm-token-9",
+      "android",
+    )) as {
+      userId: string;
+    };
+    expect(out.userId).toBe("u-1");
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { token: "fcm-token-9" },
+      }),
+    );
   });
 });
 

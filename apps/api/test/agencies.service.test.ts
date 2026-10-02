@@ -1,3 +1,8 @@
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AgenciesService } from "../src/agencies/agencies.service.js";
 import type { PrismaService } from "../src/prisma/prisma.service.js";
@@ -45,6 +50,103 @@ describe("AgenciesService (spec §17, §18)", () => {
     expect(await svc.myAgencies(admin)).toHaveLength(2);
   });
 
+  it("creates agencies with a wallet, slug, and guards", async () => {
+    const created: Record<string, unknown>[] = [];
+    const svc = serviceWith({
+      agency: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((a: { data: object }) => {
+          created.push(a.data as Record<string, unknown>);
+          return Promise.resolve({ id: "ag-9", ...(a.data as object) });
+        }),
+      },
+      wallet: { create: vi.fn().mockResolvedValue({ id: "w-9" }) },
+    });
+    const agency = (await svc.createAgency({
+      name: "South Wheels",
+      cityCode: "072217000",
+      contactPhone: "09170000999",
+    })) as { id: string; slug: string; status: string };
+    expect(agency.id).toBe("ag-9");
+    expect(agency.slug).toBe("south-wheels");
+    expect(agency.status).toBe("ACTIVE");
+    expect(created[0]).toMatchObject({ name: "South Wheels" });
+  });
+
+  it("rejects duplicate slugs and blank names", async () => {
+    const svc = serviceWith({
+      agency: {
+        findUnique: vi.fn().mockResolvedValue({ id: "ag-1" }),
+        create: vi.fn(),
+      },
+      wallet: { create: vi.fn() },
+    });
+    await expect(
+      svc.createAgency({
+        name: "South Wheels",
+        cityCode: "072217000",
+        contactPhone: "09170000999",
+      }),
+    ).rejects.toThrowError(ConflictException);
+    const fresh = serviceWith({
+      agency: { findUnique: vi.fn(), create: vi.fn() },
+      wallet: { create: vi.fn() },
+    });
+    await expect(
+      fresh.createAgency({ name: "  ", cityCode: "", contactPhone: "" }),
+    ).rejects.toThrowError(BadRequestException);
+  });
+
+  it("updates contact, city, and status", async () => {
+    const update = vi
+      .fn()
+      .mockImplementation((a: { data: object }) =>
+        Promise.resolve({ id: "ag-1", ...a.data }),
+      );
+    const svc = serviceWith({
+      agency: {
+        findUnique: vi.fn().mockResolvedValue({ id: "ag-1" }),
+        update,
+      },
+      wallet: { create: vi.fn() },
+    });
+    const out = (await svc.updateAgency("ag-1", {
+      contactPhone: "09170000999",
+      status: "SUSPENDED",
+    })) as Record<string, unknown>;
+    expect(out["status"]).toBe("SUSPENDED");
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "ag-1" },
+        data: expect.objectContaining({ contactPhone: "09170000999" }),
+      }),
+    );
+    const missing = serviceWith({
+      agency: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        update: vi.fn(),
+      },
+      wallet: { create: vi.fn() },
+    });
+    await expect(
+      missing.updateAgency("ag-9", { contactPhone: "09170000999" }),
+    ).rejects.toThrowError(NotFoundException);
+    await expect(
+      svc.updateAgency("ag-1", { status: "WEIRD" }),
+    ).rejects.toThrowError(BadRequestException);
+  });
+
+  it("lists active agencies for the onboarding picker", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "ag-1" }]);
+    const svc = serviceWith({ agency: { findMany } });
+    expect(await svc.listActive()).toEqual([{ id: "ag-1" }]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: "ACTIVE" }),
+      }),
+    );
+  });
+
   it("lists fleet and the compliance queue scoped to the agency", async () => {
     const svc = serviceWith({
       driver: { findMany: vi.fn().mockResolvedValue([{ id: "d-1" }]) },
@@ -64,6 +166,26 @@ describe("AgenciesService (spec §17, §18)", () => {
     await expect(
       svc.listDocuments("ag-1", undefined, outsider),
     ).rejects.toThrow("not a member of this agency");
+  });
+
+  it("searches documents by driver, phone, or type with paging", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "doc-1" }]);
+    const svc = serviceWith({
+      driver: { findMany: vi.fn().mockResolvedValue([{ id: "d-1" }]) },
+      vehicle: { findMany: vi.fn().mockResolvedValue([]) },
+      document: { findMany },
+    });
+    const out = await svc.listDocuments("ag-1", undefined, owner, {
+      search: "santos",
+      take: 20,
+      skip: 20,
+    });
+    expect(out).toHaveLength(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 20, skip: 20 }),
+    );
+    const where = findMany.mock.calls[0][0].where;
+    expect(JSON.stringify(where).toLowerCase()).toContain("santos");
   });
 
   it("scopes ride lists to the agency", async () => {
@@ -87,6 +209,17 @@ describe("AgenciesService (spec §17, §18)", () => {
     await svc.listDrivers("ag-1", owner);
     await expect(svc.listDrivers("ag-1", outsider)).rejects.toThrow(
       "not a member of this agency",
+    );
+  });
+
+  it("attaches documents to the driver list for progress display", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const svc = serviceWith({ driver: { findMany } });
+    await svc.listDrivers("ag-1", owner);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({ documents: expect.anything() }),
+      }),
     );
   });
 

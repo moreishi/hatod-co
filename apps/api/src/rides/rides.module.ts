@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { BillingModule } from "../billing/billing.module.js";
 import { MatchingModule } from "../matching/matching.module.js";
 import { MessagingModule } from "../messaging/messaging.module.js";
 import { NotificationsModule } from "../notifications/notifications.module.js";
@@ -13,6 +14,7 @@ import { RidesService } from "./rides.service.js";
     MessagingModule,
     RealtimeModule,
     MatchingModule,
+    BillingModule,
   ],
   controllers: [RidesController],
   providers: [RidesService, RideTransitionGuard],

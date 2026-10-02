@@ -12,7 +12,18 @@ export interface LatLng {
 
 export interface RouteOptions {
   /** Vehicle class affects costing (e.g. motorcycle profile). */
-  vehicleType: "MOTORCYCLE" | "SEDAN" | "SUV" | "VAN";
+  vehicleType:
+    | "MOTORCYCLE"
+    | "SEDAN"
+    | "SUV"
+    | "VAN"
+    | "TAXI"
+    | "CAR_4SEATER"
+    | "CAR_6SEATER"
+    | "TRUCK_600KG"
+    | "TRUCK_600KG_MOVER"
+    | "TRUCK_1000KG"
+    | "TRUCK_2000KG";
 }
 
 export interface RouteResult {
@@ -20,6 +31,8 @@ export interface RouteResult {
   /** Estimated travel time in seconds, free-flow. */
   durationSec: number;
   provider: string;
+  /** Encoded road geometry (polyline precision 5); "" when unavailable. */
+  geometry: string;
 }
 
 export interface RoutingProvider {
@@ -42,6 +55,13 @@ const SPEEDS_KMH: Record<RouteOptions["vehicleType"], number> = {
   SEDAN: 24,
   SUV: 24,
   VAN: 22,
+  TAXI: 24,
+  CAR_4SEATER: 24,
+  CAR_6SEATER: 22,
+  TRUCK_600KG: 20,
+  TRUCK_600KG_MOVER: 20,
+  TRUCK_1000KG: 18,
+  TRUCK_2000KG: 18,
 };
 
 export function haversineKm(a: LatLng, b: LatLng): number {
@@ -72,7 +92,56 @@ export class HaversineProvider implements RoutingProvider {
     const durationSec = Math.round(
       (distanceKm / SPEEDS_KMH[options.vehicleType]) * 3600,
     );
-    return { distanceKm, durationSec, provider: this.name };
+    return { distanceKm, durationSec, provider: this.name, geometry: "" };
+  }
+}
+
+/**
+ * OSRM fastest-route provider (free public demo server by default; self-host
+ * for production per the routing spec). Falls back to haversine so a routing
+ * outage never breaks quoting — geometry is just empty then.
+ */
+export class OsrmProvider implements RoutingProvider {
+  readonly name = "osrm";
+  private readonly baseUrl: string;
+  private readonly fetchFn: typeof fetch;
+  private readonly fallback = new HaversineProvider();
+
+  constructor(opts: { baseUrl?: string; fetchFn?: typeof fetch } = {}) {
+    this.baseUrl = opts.baseUrl ?? "https://router.project-osrm.org";
+    this.fetchFn = opts.fetchFn ?? fetch;
+  }
+
+  async calculateRoute(
+    origin: LatLng,
+    destination: LatLng,
+    options: RouteOptions,
+  ): Promise<RouteResult> {
+    try {
+      const url =
+        `${this.baseUrl}/route/v1/driving/` +
+        `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
+        `?overview=full&geometries=polyline`;
+      const res = await this.fetchFn(url);
+      if (!res.ok) throw new Error(`osrm http ${res.status}`);
+      const body = (await res.json()) as {
+        code: string;
+        routes: { distance: number; duration: number; geometry: string }[];
+      };
+      const first = body.code === "Ok" ? body.routes[0] : undefined;
+      if (first == null || typeof first.geometry !== "string") {
+        throw new Error("osrm no route");
+      }
+      void options;
+      return {
+        distanceKm: Math.round((first.distance / 1000) * 100) / 100,
+        durationSec: Math.round(first.duration),
+        provider: this.name,
+        geometry: first.geometry,
+      };
+    } catch {
+      return this.fallback.calculateRoute(origin, destination, options);
+    }
   }
 }
 

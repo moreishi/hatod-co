@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { RideStatus } from "@hailing/constants";
+import { pricing as staticPricing } from "@hailing/data";
 import type { PrismaService } from "../src/prisma/prisma.service.js";
-import { quoteFare } from "../src/rides/fare.js";
+import { quoteAllFares, quoteFare } from "../src/rides/fare.js";
 import { RideTransitionGuard } from "../src/rides/ride-transition.guard.js";
 import { RidesService } from "../src/rides/rides.service.js";
 
@@ -24,6 +25,54 @@ describe("quoteFare (spec rule 37)", () => {
     expect(() =>
       quoteFare({ vehicleType: "TRICYCLE" as never, distanceKm: 5 }),
     ).toThrow("unknown vehicle type");
+  });
+
+  it("prices the expanded fleet off the pricing table", () => {
+    expect(
+      quoteFare({ vehicleType: "TAXI", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 1500);
+    expect(
+      quoteFare({ vehicleType: "CAR_4SEATER", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 1600);
+    expect(
+      quoteFare({ vehicleType: "CAR_6SEATER", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 2000);
+    expect(
+      quoteFare({ vehicleType: "TRUCK_600KG", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 2500);
+    expect(
+      quoteFare({ vehicleType: "TRUCK_600KG_MOVER", distanceKm: 10 })
+        .fareCentavos,
+    ).toBe(4000 + 10 * 3000);
+    expect(
+      quoteFare({ vehicleType: "TRUCK_1000KG", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 3500);
+    expect(
+      quoteFare({ vehicleType: "TRUCK_2000KG", distanceKm: 10 }).fareCentavos,
+    ).toBe(4000 + 10 * 4500);
+  });
+
+  it("quotes every fleet type off one distance", () => {
+    const fares = quoteAllFares({ distanceKm: 10 });
+    const types = [
+      "MOTORCYCLE",
+      "SEDAN",
+      "SUV",
+      "VAN",
+      "TAXI",
+      "CAR_4SEATER",
+      "CAR_6SEATER",
+      "TRUCK_600KG",
+      "TRUCK_600KG_MOVER",
+      "TRUCK_1000KG",
+      "TRUCK_2000KG",
+    ] as const;
+    expect(Object.keys(fares).sort()).toEqual([...types].sort());
+    for (const vehicleType of types) {
+      expect(fares[vehicleType]).toBe(
+        quoteFare({ vehicleType, distanceKm: 10 }).fareCentavos,
+      );
+    }
   });
 });
 
@@ -53,6 +102,16 @@ function serviceWith(db: Record<string, unknown>) {
     matchRide: vi.fn().mockResolvedValue(null),
     cancelOffers: vi.fn(),
   };
+  const billing = {
+    getPricing: vi.fn().mockResolvedValue({
+      baseFareCentavos: staticPricing.baseFareCentavos,
+      minimumFareCentavos: staticPricing.minimumFareCentavos,
+      perKmCentavos: { ...staticPricing.perKmCentavos },
+      commissionTiers: staticPricing.commissionTiers.map((t) => ({
+        rateBps: t.rateBps,
+      })),
+    }),
+  };
   const service = new RidesService(
     prisma,
     new RideTransitionGuard(),
@@ -60,6 +119,7 @@ function serviceWith(db: Record<string, unknown>) {
     realtime as never,
     messaging as never,
     matching as never,
+    billing as never,
   );
   return Object.assign(service, {
     sent: notifications,
@@ -93,6 +153,58 @@ describe("RidesService", () => {
     };
     expect(ride.status).toBe(RideStatus.REQUESTED);
     expect(ride.fareCentavos).toBe(4000 + 5 * 1500);
+  });
+
+  it("persists booking extras: tip, change-for, rider note", async () => {
+    const create = vi
+      .fn()
+      .mockImplementation((args: { data: object }) =>
+        Promise.resolve(args.data),
+      );
+    const svc = serviceWith({ ride: { create } });
+    const ride = (await svc.requestRide("rider-1", {
+      ...dto,
+      tipCentavos: 2000,
+      changeFor: 100000,
+      riderNote: "Gate 2, blue house",
+    })) as {
+      tipCentavos: number;
+      changeFor: number;
+      riderNote: string;
+    };
+    expect(ride.tipCentavos).toBe(2000);
+    expect(ride.changeFor).toBe(100000);
+    expect(ride.riderNote).toBe("Gate 2, blue house");
+  });
+
+  it("books with E-Wallet and rejects unknown methods", async () => {
+    const create = vi
+      .fn()
+      .mockImplementation((args: { data: object }) =>
+        Promise.resolve(args.data),
+      );
+    const svc = serviceWith({ ride: { create } });
+    const ride = (await svc.requestRide("rider-1", {
+      ...dto,
+      paymentMethod: "WALLET",
+    })) as { paymentMethod: string };
+    expect(ride.paymentMethod).toBe("WALLET");
+    await expect(
+      svc.requestRide("rider-1", {
+        ...dto,
+        paymentMethod: "BARTER" as never,
+      }),
+    ).rejects.toThrow("invalid payment method");
+  });
+
+  it("rejects negative tips and overlong notes", async () => {
+    const svc = serviceWith({ ride: { create: vi.fn() } });
+    await expect(
+      svc.requestRide("rider-1", { ...dto, tipCentavos: -100 }),
+    ).rejects.toThrow("invalid tip");
+    await expect(
+      svc.requestRide("rider-1", { ...dto, riderNote: "x".repeat(141) }),
+    ).rejects.toThrow("note too long");
   });
 
   it("assigns only dispatchable drivers with an active vehicle", async () => {
@@ -315,7 +427,9 @@ describe("RidesService", () => {
   });
 
   it("quotes fares from real coordinates", async () => {
+    process.env.ROUTING_PROVIDER = "haversine";
     const svc = serviceWith({});
+    delete process.env.ROUTING_PROVIDER;
     const quote = await svc.quoteFare(
       { lat: 10.3181, lng: 123.9054 },
       { lat: 10.3111, lng: 123.9185 },
@@ -324,6 +438,63 @@ describe("RidesService", () => {
     expect(quote.provider).toBe("haversine");
     expect(quote.fareCentavos).toBeGreaterThanOrEqual(6000);
     expect(quote.distanceKm).toBeGreaterThan(0);
+  });
+
+  it("returns every fleet fare off the single route", async () => {
+    process.env.ROUTING_PROVIDER = "haversine";
+    const svc = serviceWith({});
+    delete process.env.ROUTING_PROVIDER;
+    const quote = await svc.quoteFare(
+      { lat: 10.3181, lng: 123.9054 },
+      { lat: 10.3111, lng: 123.9185 },
+      "SEDAN",
+    );
+    expect(quote.fares["SEDAN"]).toBe(quote.fareCentavos);
+    expect(quote.fares["TAXI"]).toBe(
+      quoteFare({ vehicleType: "TAXI", distanceKm: quote.distanceKm })
+        .fareCentavos,
+    );
+    expect(quote.fares["TRUCK_2000KG"]).toBe(
+      quoteFare({ vehicleType: "TRUCK_2000KG", distanceKm: quote.distanceKm })
+        .fareCentavos,
+    );
+    expect(Object.keys(quote.fares)).toHaveLength(11);
+  });
+
+  it("shares the assigned driver location with its rider", async () => {
+    const ping = {
+      lat: 10.39,
+      lng: 123.97,
+      recordedAt: new Date(),
+    };
+    const svc = serviceWith({
+      ride: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "ride-1",
+          riderId: "u-1",
+          driverId: "d-1",
+        }),
+      },
+      locationPing: { findFirst: vi.fn().mockResolvedValue(ping) },
+    });
+    const loc = await svc.driverLocation("ride-1", "u-1");
+    expect(loc).toMatchObject({ lat: 10.39, lng: 123.97 });
+    expect(loc?.ageSec).toBeGreaterThanOrEqual(0);
+  });
+
+  it("hides driver location from strangers and when unassigned", async () => {
+    const svc = serviceWith({
+      ride: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "ride-1",
+          riderId: "u-1",
+          driverId: null,
+        }),
+      },
+      locationPing: { findFirst: vi.fn() },
+    });
+    await expect(svc.driverLocation("ride-1", "u-2")).rejects.toThrow();
+    await expect(svc.driverLocation("ride-1", "u-1")).rejects.toThrow();
   });
 
   it("lists my rides as rider and as driver", async () => {
@@ -342,6 +513,24 @@ describe("RidesService", () => {
     };
     expect(mine.asRider.map((r) => r.id)).toEqual(["r-rider"]);
     expect(mine.asDriver.map((r) => r.id)).toEqual(["r-driver"]);
+  });
+
+  it("includes the active vehicle on driver rides", async () => {
+    const findMany = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const svc = serviceWith({
+      driver: { findUnique: vi.fn().mockResolvedValue({ id: "d-1" }) },
+      ride: { findMany },
+    });
+    await svc.myRides("u-1");
+    expect(findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        include: expect.objectContaining({ driver: expect.anything() }),
+      }),
+    );
   });
 
   it("returns driver earnings from wallet ledger", async () => {

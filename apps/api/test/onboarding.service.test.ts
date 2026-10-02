@@ -40,6 +40,34 @@ describe("OnboardingService (spec §21-§24)", () => {
     ).rejects.toThrow("already has a driver profile");
   });
 
+  it("reports the driver profile with documents and requirements", async () => {
+    const svc = serviceWith({
+      driver: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "d-1",
+          status: "DOCUMENTS_PENDING",
+          documents: [
+            { id: "doc-1", type: "DRIVERS_LICENSE", status: "PENDING" },
+          ],
+        }),
+      },
+    });
+    const profile = await svc.driverProfile("u-1");
+    expect(profile.driver?.id).toBe("d-1");
+    expect(profile.driver?.status).toBe("DOCUMENTS_PENDING");
+    expect(profile.documents).toHaveLength(1);
+    expect(
+      profile.requirements.driver.map((r: { type: string }) => r.type),
+    ).toContain("DRIVERS_LICENSE");
+
+    const none = serviceWith({
+      driver: { findUnique: vi.fn().mockResolvedValue(null) },
+    });
+    const empty = await none.driverProfile("u-9");
+    expect(empty.driver).toBeNull();
+    expect(empty.documents).toEqual([]);
+  });
+
   it("lets owners and staff upload, and moves APPLICANT to DOCUMENTS_PENDING", async () => {
     const update = vi
       .fn()
@@ -161,6 +189,40 @@ describe("OnboardingService (spec §21-§24)", () => {
     expect(rejected.status).toBe("REJECTED");
   });
 
+  it("suspends active drivers and reactivates suspended ones", async () => {
+    const mk = (status: string) =>
+      serviceWith({
+        driver: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "d-1", status }),
+          update: vi
+            .fn()
+            .mockImplementation((a: { data: object }) =>
+              Promise.resolve(a.data),
+            ),
+        },
+        document: { findMany: vi.fn().mockResolvedValue([]) },
+        auditLog: { create: vi.fn().mockResolvedValue({}) },
+      });
+    const suspended = (await mk("ACTIVE").reviewDriver(
+      "d-1",
+      "suspend",
+      "rev",
+    )) as { status: string };
+    expect(suspended.status).toBe("SUSPENDED");
+    const active = (await mk("SUSPENDED").reviewDriver(
+      "d-1",
+      "reactivate",
+      "rev",
+    )) as { status: string };
+    expect(active.status).toBe("ACTIVE");
+    await expect(
+      mk("APPLICANT").reviewDriver("d-1", "suspend", "rev"),
+    ).rejects.toThrow("cannot suspend");
+    await expect(
+      mk("ACTIVE").reviewDriver("d-1", "reactivate", "rev"),
+    ).rejects.toThrow("cannot reactivate");
+  });
+
   it("only accepts VERIFIED/REJECTED verdicts on documents", async () => {
     const svc = serviceWith({
       document: {
@@ -173,5 +235,21 @@ describe("OnboardingService (spec §21-§24)", () => {
       svc.verifyDocument("doc-1", "PENDING" as never, "rev"),
     ).rejects.toThrow("cannot set document");
     await svc.verifyDocument("doc-1", "VERIFIED", "rev");
+  });
+
+  it("stores the reviewer note with the verdict", async () => {
+    let saved: Record<string, unknown> = {};
+    const svc = serviceWith({
+      document: {
+        update: vi.fn().mockImplementation((a: { data: object }) => {
+          saved = a.data as Record<string, unknown>;
+          return Promise.resolve(a.data);
+        }),
+      },
+    });
+    await svc.verifyDocument("doc-1", "REJECTED", "rev", "Photo too blurry");
+    expect(saved["status"]).toBe("REJECTED");
+    expect(saved["reviewNote"]).toBe("Photo too blurry");
+    expect(saved["reviewedBy"]).toBe("rev");
   });
 });

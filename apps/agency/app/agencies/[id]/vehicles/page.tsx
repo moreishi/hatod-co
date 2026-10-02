@@ -21,6 +21,10 @@ export default async function VehiclesPage({
         ← Driver board
       </Link>
       <h1 className="mt-2 text-3xl font-bold">Fleet</h1>
+      <p className="mt-1 max-w-2xl text-sm text-slate-600">
+        Register each vehicle by plate, then assign it to an active driver. Only
+        drivers with an assigned vehicle can receive trip offers.
+      </p>
       <p className="mt-1 font-mono text-xs text-slate-500">{id}</p>
       <FleetManager agencyId={id} vehicles={vehicles} drivers={drivers} />
     </main>
