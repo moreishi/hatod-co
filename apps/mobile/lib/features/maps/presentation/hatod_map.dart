@@ -25,6 +25,12 @@ class HatodMap extends StatelessWidget {
   /// destination never hides behind the sheet. 0 = use the plain camera.
   final double bottomInset;
 
+  /// When set, the camera centers on this point and uses [zoom] directly,
+  /// ignoring any pin-based fit (the pins still render). Use for screens
+  /// that must focus one place — e.g. the finding-driver radar on the
+  /// confirmed pickup (GPS or the rider's override).
+  final HatodMapPoint? focusPoint;
+
   /// Camera fit that keeps pickup and dropoff both on screen, respecting
   /// any bottom inset. Shared by the map and the detail screens' recenter
   /// buttons so "recenter" reproduces the exact default view.
@@ -50,14 +56,17 @@ class HatodMap extends StatelessWidget {
     this.controller,
     this.zoom,
     this.bottomInset = 0,
+    this.focusPoint,
   });
 
   ll.LatLng _to(HatodMapPoint p) => ll.LatLng(p.lat, p.lng);
 
   @override
   Widget build(BuildContext context) {
-    final focus = pickup ?? dropoff ?? driver ?? current ?? MapConstants.gensan;
-    final second = dropoff ?? pickup;
+    final focus = focusPoint ?? pickup ?? dropoff ?? driver ?? current ?? MapConstants.gensan;
+    // An explicit focus point locks the camera to it (zoom applies); the
+    // pin-based fit only runs when no focus point is given.
+    final second = focusPoint == null ? (dropoff ?? pickup) : null;
     final camera = second == null || focus == second
         ? HatodMapCamera(
             center: focus, zoom: zoom ?? MapConstants.defaultZoom)
@@ -141,12 +150,14 @@ class HatodMap extends StatelessWidget {
             initialCenter: _to(camera.center),
             initialZoom: camera.zoom,
             // Overridden by the fit below when set: fit BOTH pins into the
-            // visible area (above any bottom-docked UI) by default.
-            initialCameraFit:
-                pickup != null && dropoff != null && bottomInset > 0
-                    ? routeCameraFit(pickup!, dropoff!,
-                        bottomInset: bottomInset)
-                    : null,
+            // visible area (above any bottom-docked UI) by default. A
+            // focusPoint wins over everything.
+            initialCameraFit: focusPoint == null &&
+                    pickup != null &&
+                    dropoff != null &&
+                    bottomInset > 0
+                ? routeCameraFit(pickup!, dropoff!, bottomInset: bottomInset)
+                : null,
             minZoom: MapConstants.minZoom,
             maxZoom: MapConstants.maxZoom,
           ),

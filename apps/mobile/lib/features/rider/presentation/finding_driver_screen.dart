@@ -183,6 +183,11 @@ class _FindingDriverScreenState extends State<FindingDriverScreen>
             controller: _mapController,
             pickup: widget.pickup,
             dropoff: widget.dropoff,
+            // Radar sits on the confirmed pickup — GPS or the rider's
+            // override — zoomed to street level (16) so the rider sees
+            // their exact spot while waiting.
+            focusPoint: widget.pickup,
+            zoom: 16,
           ),
           if (!_found && !_timedOut)
             Center(
