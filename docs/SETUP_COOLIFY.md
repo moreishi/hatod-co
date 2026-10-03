@@ -161,10 +161,10 @@ one-shot service):
 npx prisma migrate deploy --schema prisma/postgres/schema.prisma
 ```
 
-⚠️ **Before first deploy:** `DeviceToken` and `FareSchedule` were applied to the
-dev DB by raw SQL and have **no committed migration**. Generate and commit real
-migrations locally (`prisma migrate dev --create-only`) or `migrate deploy`
-won't create those tables in prod. This blocks the mobile chat/push/fare flows.
+All 23 tables are covered by committed migrations `000_init` →
+`006_device_token_fare_schedule` (the latter closed the old raw-SQL gap for
+`DeviceToken`/`FareSchedule`), so `migrate deploy` creates everything. Keep
+that rule: any new model ships with a committed migration in the same PR.
 
 Do **not** run `prisma:seed` / `prisma:seed-places` against prod — the seed
 guard refuses non-local URLs, and sample accounts must never exist in prod.
