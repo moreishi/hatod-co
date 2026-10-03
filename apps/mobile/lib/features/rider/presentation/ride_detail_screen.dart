@@ -112,14 +112,14 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
             controller: _mapController,
             pickup: pickup,
             dropoff: dropoff,
-            bottomInset: 500,
+            bottomInset: 540,
             route: pickup != null && dropoff != null
                 ? MapMath.straightLine(pickup, dropoff)
                 : const [],
           ),
           Positioned(
             right: 16,
-            bottom: 500,
+            bottom: 540,
             child: FloatingActionButton.small(
               key: const Key('detailRecenter'),
               heroTag: 'detail_recenter',
@@ -129,7 +129,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
               onPressed: () {
                 if (pickup == null || dropoff == null) return;
                 final cam = HatodMap.routeCameraFit(pickup, dropoff,
-                        bottomInset: 500)
+                        bottomInset: 540)
                     .fit(_mapController.camera);
                 _mapController.move(cam.center, cam.zoom);
               },
