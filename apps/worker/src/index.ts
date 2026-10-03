@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import {
   CLOSED_CONVERSATION_RETENTION_DAYS,
@@ -21,24 +22,59 @@ const PURGE_MS = 60 * 60 * 1000;
 
 const prisma = new PrismaClient();
 
-/** Real FCM when service-account creds are present, log fallback otherwise. */
-function pushProvider() {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+/**
+ * Real FCM when GOOGLE_APPLICATION_CREDENTIALS points at a service-account
+ * JSON; otherwise the log provider (safe no-op in dev). Reads the file
+ * explicitly so the project id is always set and misconfig degrades to log
+ * rather than crashing the worker.
+ */
+function pushProvider(): {
+  provider: FcmPushProvider | LogPushProvider;
+  mode: string;
+} {
+  const path = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!path) return { provider: new LogPushProvider(), mode: "log (disabled)" };
+  try {
+    const sa = JSON.parse(readFileSync(path, "utf8")) as {
+      project_id?: string;
+      client_email?: string;
+      private_key?: string;
+    };
+    if (!sa.project_id || !sa.client_email || !sa.private_key) {
+      throw new Error(
+        "service account missing project_id/client_email/private_key",
+      );
+    }
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+      projectId: sa.project_id,
+      credential: admin.credential.cert({
+        projectId: sa.project_id,
+        clientEmail: sa.client_email,
+        privateKey: sa.private_key.replace(/\\n/g, "\n"),
+      }),
     });
-    return new FcmPushProvider();
+    return { provider: new FcmPushProvider(), mode: `fcm (${sa.project_id})` };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "unknown";
+    console.error(`FCM init failed (${reason}); using log push provider`);
+    return {
+      provider: new LogPushProvider(),
+      mode: `log (fcm init failed: ${reason})`,
+    };
   }
-  return new LogPushProvider();
 }
+
+const { provider: pushProviderInstance, mode: pushMode } = pushProvider();
 
 const outbox = new OutboxConsumer(prisma, {
   SMS: new LogSmsProvider(),
-  PUSH: pushProvider(),
+  PUSH: pushProviderInstance,
   EMAIL: new LogEmailProvider(),
 });
 
-console.log(`hailing worker starting (outbox poll every ${POLL_MS}ms)`);
+console.log(
+  `hailing worker starting (outbox poll every ${POLL_MS}ms, push=${pushMode})`,
+);
 
 let stopped = false;
 let attempt = 0;
