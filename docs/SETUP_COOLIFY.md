@@ -12,7 +12,7 @@ Assumes: a fresh Ubuntu 22.04/24.04 VPS, root access, and this repo on GitHub.
 
 - VPS: **4 vCPU / 8 GB / 80 GB** recommended (2/4/40 works but Next builds are
   memory-hungry — see §9 if they OOM).
-- A domain (or subdomain) whose **DNS you control**, e.g. `yourdomain.com`.
+- A domain (or subdomain) whose **DNS you control**, e.g. `iskina.ph` (live api: `api-hailing.iskina.ph`).
 - GitHub repo access (Coolify installs a GitHub App or uses a deploy key).
 - A Firebase project (for push) and an SMS provider account (for OTP) — can be
   wired later; the stack boots without them.
@@ -25,13 +25,18 @@ Create **A records** at your registrar → your VPS IP, one per service:
 
 | Host | Type | Value |
 | --- | --- | --- |
-| `api` | A | `<VPS_IP>` |
-| `admin` | A | `<VPS_IP>` |
-| `agency` | A | `<VPS_IP>` |
-| `rider` | A | `<VPS_IP>` |
-| `driver` | A | `<VPS_IP>` |
+| `api-hailing` | A | `<VPS_IP>` |
+| `admin-hailing` | A | `<VPS_IP>` |
+| `agency-hailing` | A | `<VPS_IP>` |
+| `rider-hailing` | A | `<VPS_IP>` |
+| `driver-hailing` | A | `<VPS_IP>` |
 
-Wait for propagation (check with `nslookup api.yourdomain.com`). Coolify can
+> Replace Coolify's auto-generated random FQDN (like
+> `hfgxpzksyfga8a9a1j6lzoul.iskina.ph`) with the fixed domains above — the
+> mobile app bakes `API_URL` into the APK at build time and can't follow a
+> rotating domain.
+
+Wait for propagation (check with `nslookup api-hailing.iskina.ph`). Coolify can
 only issue Let's Encrypt certs once these resolve.
 
 ---
@@ -112,7 +117,7 @@ other containers can reach them.
   directory".
 - **Build pack**: Dockerfile
 - **Port**: `3001`
-- **Domains**: `https://api.yourdomain.com`
+- **Domains**: `https://api-hailing.iskina.ph`
 
 Set **environment variables** (see `SYSTEM_MAP.md` §6 for the full list):
 
@@ -196,10 +201,10 @@ pattern as §5: **Base directory** `.` and **Dockerfile location**
 
 | Dir | Port | Domain |
 | --- | --- | --- |
-| `apps/admin` | 3000 | `admin.yourdomain.com` |
-| `apps/agency` | 3002 | `agency.yourdomain.com` |
-| `apps/rider` | 3004 | `rider.yourdomain.com` |
-| `apps/driver` | 3005 | `driver.yourdomain.com` |
+| `apps/admin` | 3000 | `admin-hailing.iskina.ph` |
+| `apps/agency` | 3002 | `agency-hailing.iskina.ph` |
+| `apps/rider` | 3004 | `rider-hailing.iskina.ph` |
+| `apps/driver` | 3005 | `driver-hailing.iskina.ph` |
 
 **Env for every portal** (the two that matter):
 
@@ -283,7 +288,7 @@ Not a VPS service. Point it at the public api and produce an installable build:
 
 ```powershell
 cd apps/mobile
-flutter build apk --release --dart-define=API_URL=https://api.yourdomain.com
+flutter build apk --release --dart-define=API_URL=https://api-hailing.iskina.ph
 ```
 
 Distribute the APK directly, via Firebase App Distribution, or Play internal
@@ -293,7 +298,7 @@ track. (iOS requires a macOS runner or Codemagic/Xcode Cloud CI.)
 
 ## 13. Verify the whole loop (go-live gate)
 
-Against `https://api.yourdomain.com`:
+Against `https://api-hailing.iskina.ph`:
 
 1. Register/login on mobile → receive **real SMS** OTP (needs §11).
 2. Book a ride → GPS pickup → destination search → fare + route.
