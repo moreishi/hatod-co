@@ -241,6 +241,7 @@ Dockerfiles themselves). Match your log line to the fix:
 | Every `COPY` fails: `failed to compute cache key: "/turbo.json": not found` | Build context was the app folder — our Dockerfiles build from the **monorepo root** | Base directory must be `.` (§5) |
 | `error TS5083: Cannot read file '/app/tsconfig.base.json'` and `TS2307: Cannot find module '@hailing/*'` | Dockerfile didn't copy the root tsconfig or build workspace deps before the app | Fixed in repo (tsconfig.base.json copied; `pnpm --filter "@hailing/<app>^..." run build` before the app build; install uses the `...` filter). Redeploy latest `develop` |
 | Container crash-loops: `ERR_MODULE_NOT_FOUND: Cannot find package 'reflect-metadata'` | pnpm workspaces keep each app's deps in `apps/<app>/node_modules` + `@hailing/*` in `/app/packages`; the runtime stage shipped only the root store | Fixed in repo (runtime stages copy `apps/<app>/node_modules` + `/app/packages`). Redeploy latest `develop` |
+| Worker crash-loops: `@prisma/client did not initialize yet` | The worker image never generated the Prisma client (only the stub shipped) | Fixed in repo (worker image generates from the api's Postgres schema, copied into `apps/worker/prisma/`). Redeploy latest `develop` |
 
 Also seen: Coolify prints every build-time env var as an `ARG` line (value
 included) into the generated Dockerfile — keep secrets Runtime-only (§5).
