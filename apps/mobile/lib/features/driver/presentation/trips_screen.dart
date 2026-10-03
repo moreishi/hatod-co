@@ -24,13 +24,25 @@ class DriverTripsScreen extends StatefulWidget {
 
 class _DriverTripsScreenState extends State<DriverTripsScreen> {
   List<Ride>? _trips;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    widget.repository.myRides().then((trips) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final trips = await widget.repository.myRides();
       if (mounted) setState(() => _trips = trips);
-    });
+    } catch (_) {
+      // Stale session (e.g. the account was reseeded) or a network failure —
+      // surface it instead of spinning forever.
+      if (mounted) {
+        setState(() => _error = 'Could not load trips. Please try again.');
+      }
+    }
   }
 
   @override
@@ -39,7 +51,18 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('My trips')),
       body: trips == null
-          ? const Center(child: CircularProgressIndicator())
+          ? _error == null
+              ? const Center(child: CircularProgressIndicator())
+              : Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(_error!),
+                      const SizedBox(height: 12),
+                      OutlinedButton(onPressed: _load, child: const Text('Retry')),
+                    ],
+                  ),
+                )
           : trips.isEmpty
               ? const Center(
                   child: Column(

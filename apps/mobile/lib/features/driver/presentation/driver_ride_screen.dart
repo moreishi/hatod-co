@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import '../../../core/constants/app_constants.dart';
 import '../../booking/domain/ride.dart';
 import '../../maps/domain/map_models.dart';
@@ -30,6 +32,7 @@ class DriverRideScreen extends StatefulWidget {
 class _DriverRideScreenState extends State<DriverRideScreen> {
   Ride? _ride;
   String? _error;
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -110,100 +113,172 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
         ? null
         : _pt(ride.dropoffLat, ride.dropoffLng);
     return Scaffold(
-      appBar: AppBar(title: const Text('Ride')),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8),
+          child: CircleAvatar(
+            backgroundColor: Colors.white,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ),
+      ),
       body: ride == null
           ? Center(
               child: _error == null
                   ? const CircularProgressIndicator()
                   : Text(_error!),
             )
-          : ListView(
-              padding: const EdgeInsets.all(24),
+          : Stack(
               children: [
-                  Text('${ride.pickupLabel} → ${ride.dropoffLabel}',
-                      style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  Text(ride.status, key: const Key('rideStatus')),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius:
-                        const BorderRadius.all(Radius.circular(16)),
-                    child: HatodMap(
-                      key: const Key('map'),
-                      height: 220,
-                      pickup: pickup,
-                      dropoff: dropoff,
-                      route: pickup != null && dropoff != null
-                          ? MapMath.straightLine(pickup, dropoff)
-                          : const [],
-                    ),
+                // Fullscreen map background: pins + route fill the screen,
+                // details live in the sheet on top.
+                HatodMap(
+                  key: const Key('map'),
+                  height: null,
+                  controller: _mapController,
+                  pickup: pickup,
+                  dropoff: dropoff,
+                  route: pickup != null && dropoff != null
+                      ? MapMath.straightLine(pickup, dropoff)
+                      : const [],
+                ),
+                Positioned(
+                  right: 16,
+                  bottom: 480,
+                  child: FloatingActionButton.small(
+                    key: const Key('rideRecenter'),
+                    heroTag: 'ride_recenter',
+                    backgroundColor: Colors.white,
+                    foregroundColor: BrandColors.primary,
+                    tooltip: 'Show the whole route',
+                    onPressed: () {
+                      if (pickup == null || dropoff == null) return;
+                      final cam = MapMath.cameraFor(pickup, dropoff);
+                      _mapController.move(
+                          ll.LatLng(cam.center.lat, cam.center.lng),
+                          cam.zoom);
+                    },
+                    child: const Icon(Icons.route),
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    key: const Key('passengerExtras'),
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('PASSENGER EXTRAS',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: BrandColors.secondary)),
-                          const SizedBox(height: 4),
-                          Text(_extrasSummary(ride),
-                              style: const TextStyle(fontSize: 14)),
-                        ],
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    child: Container(
+                      constraints: const BoxConstraints(maxHeight: 460),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('${ride.pickupLabel} → ${ride.dropoffLabel}',
+                                style:
+                                    Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text(ride.status,
+                                    key: const Key('rideStatus'),
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: BrandColors.secondary)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              key: const Key('passengerExtras'),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                    BrandColors.primary.withValues(alpha: 0.05),
+                                borderRadius: const BorderRadius.all(
+                                    Radius.circular(12)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('PASSENGER EXTRAS',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: BrandColors.secondary)),
+                                  const SizedBox(height: 4),
+                                  Text(_extrasSummary(ride),
+                                      style: const TextStyle(fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            if (ride.status == 'REQUESTED') ...[
+                              ElevatedButton(
+                                onPressed: () =>
+                                    _act(() => widget.driver.acceptRide(ride.id)),
+                                child: const Text('Accept'),
+                              ),
+                              const SizedBox(height: 8),
+                              OutlinedButton(
+                                onPressed: () => _decline(ride.id),
+                                child: const Text('Decline'),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            if (ride.status == 'ASSIGNED') ...[
+                              ElevatedButton(
+                                onPressed: () =>
+                                    _act(() => widget.driver.acceptRide(ride.id)),
+                                child: const Text('Accept'),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            for (final to in nextDriverActions(ride.status))
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: ElevatedButton(
+                                  onPressed: () => _act(() =>
+                                      widget.driver.transition(ride.id, to)),
+                                  child: Text(driverActionLabel(to)),
+                                ),
+                              ),
+                            OutlinedButton(
+                              onPressed: _openChat,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(Icons.chat_bubble_outline, size: 18),
+                                  SizedBox(width: 8),
+                                  Text('Open chat'),
+                                ],
+                              ),
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: 12),
+                              Text(_error!,
+                                  style:
+                                      const TextStyle(color: Colors.red)),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (ride.status == 'REQUESTED') ...[
-                    ElevatedButton(
-                      onPressed: () => _act(() => widget.driver.acceptRide(ride.id)),
-                      child: const Text('Accept'),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: () => _decline(ride.id),
-                      child: const Text('Decline'),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (ride.status == 'ASSIGNED') ...[
-                    ElevatedButton(
-                      onPressed: () => _act(() => widget.driver.acceptRide(ride.id)),
-                      child: const Text('Accept'),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  for (final to in nextDriverActions(ride.status))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ElevatedButton(
-                        onPressed: () => _act(() => widget.driver.transition(ride.id, to)),
-                        child: Text(driverActionLabel(to)),
-                      ),
-                    ),
-                  OutlinedButton(
-                    onPressed: _openChat,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.chat_bubble_outline, size: 18),
-                        SizedBox(width: 8),
-                        Text('Open chat'),
-                      ],
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
-                  ],
-                ],
-              ),
+                ),
+              ],
+            ),
     );
   }
 }
