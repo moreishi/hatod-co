@@ -285,4 +285,4 @@ Then run the full pre-prod checklist in `SYSTEM_MAP.md` §13.
 ### Reference
 
 - Architecture, service map, full env table, cost watch → [`SYSTEM_MAP.md`](./SYSTEM_MAP.md)
-- App-specific agent notes → `apps/admin/AGENTS.md`, repo rules → `AGENTS.md`
+- App-specific agent notes → `../apps/admin/AGENTS.md`, repo rules → `../AGENTS.md`

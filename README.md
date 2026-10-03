@@ -133,6 +133,14 @@ pnpm --filter @hailing/simulator exec tsx src/drive-booking.ts [rider] [driver]
   lifecycle (approve/reject/suspend/reactivate), dispatch board with
   NO_DRIVERS rescue, fleet management, search + paging across queues.
 
+## Deploying (Coolify)
+
+- [`docs/SETUP_COOLIFY.md`](./docs/SETUP_COOLIFY.md) — hands-on, in-order
+  walkthrough: one VPS, DNS, backing services (Postgres/PostGIS, Redis), api,
+  worker, the four portals, migrations, FCM/SMS wiring, go-live checklist.
+- [`docs/SYSTEM_MAP.md`](./docs/SYSTEM_MAP.md) — architecture, service map,
+  full env-var table, and cost-watch notes.
+
 ## Loop (every change)
 
 ```powershell
@@ -156,7 +164,7 @@ apps/simulator/  Virtual riders/drivers (normal_ride, driver_reject, cancel_befo
 apps/e2e/        Playwright specs on isolated ports + database
 packages/        constants, data, notifications, routing
 infrastructure/  docker-compose.yml (LocalStage), Dockerfiles per app
-docs/            localstage.md run guide
+docs/            run guides (localstage dev, Coolify deploy, system map)
 ```
 
 ## Workflow

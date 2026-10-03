@@ -61,3 +61,10 @@ replace it. Production uses a second schema:
 - CI `postgres` job deploys both migrations to `postgis/postgis:16-3.4`.
   Production deploys generate the client from the Postgres schema and run
   `prisma migrate deploy --schema prisma/postgres/schema.prisma`.
+
+## Deploying to production (Coolify)
+
+For the real VPS deployment — DNS, backing services, api/worker/portals,
+migrations, FCM + SMS wiring, and the go-live checklist — see
+[`SETUP_COOLIFY.md`](./SETUP_COOLIFY.md) (the *how*) and
+[`SYSTEM_MAP.md`](./SYSTEM_MAP.md) (the *what*).
