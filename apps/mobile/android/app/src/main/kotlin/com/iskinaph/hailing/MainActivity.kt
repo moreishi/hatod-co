@@ -1,4 +1,4 @@
-package com.hatod.hailing_mobile
+package com.iskinaph.hailing
 
 import io.flutter.embedding.android.FlutterActivity
 

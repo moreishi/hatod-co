@@ -49,7 +49,8 @@ class PushService {
 
   Future<void> init(AuthRepository auth) async {
     try {
-      await Firebase.initializeApp();
+      // Firebase.initializeApp() already ran in main(); re-initializing the
+      // default app here would throw, so just use it.
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission();
       final android =

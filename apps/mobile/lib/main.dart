@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'core/config/app_config.dart';
 import 'core/network/api_client.dart';
@@ -18,8 +19,18 @@ import 'features/auth/presentation/welcome_screen.dart';
 import 'features/driver/data/driver_repository.dart';
 import 'features/driver/presentation/driver_home_screen.dart';
 import 'features/rider/presentation/rider_home_screen.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (_) {
+    // Firebase unavailable on this platform/build; push stays disabled and
+    // the rest of the app is unaffected.
+  }
   runApp(HailingApp(store: PrefsSessionStore()));
 }
 

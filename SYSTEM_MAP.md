@@ -204,7 +204,7 @@ state expected volume.
   the worker delivers. **Estimate volume in the PR that enables real SMS**, and
   add per-number throttling. Until then OTP codes cannot reach real phones
   (LocalStage dev-code mode is dev-only).
-- **FCM push**: create a Firebase project, package `com.hatod.hailing_mobile`,
+- **FCM push**: create a Firebase project, package `com.iskinaph.hailing`,
   download `google-services.json` → `apps/mobile/android/app/`, and a service
   account JSON for the worker/`GOOGLE_APPLICATION_CREDENTIALS`. Run `flutterfire
   configure`. Push stays a safe no-op until the config is present.

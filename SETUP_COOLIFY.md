@@ -213,7 +213,7 @@ The four Next.js builds in one Go are the usual failure point on a small VPS:
 ## 10. Wire push (FCM) — when ready
 
 1. Firebase console → new project → add Android app, package
-   `com.hatod.hailing_mobile`.
+   `com.iskinaph.hailing`.
 2. Download `google-services.json` → `apps/mobile/android/app/`, then run
    `flutterfire configure` in `apps/mobile`.
 3. Download the **service account key** JSON (Project settings → Service
