@@ -17,7 +17,10 @@ RUN pnpm --filter @hailing/worker run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
+# pnpm workspaces: ship the worker's own node_modules + @hailing/* packages.
 COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/worker/node_modules /app/apps/worker/node_modules
+COPY --from=build /app/packages /app/packages
 COPY --from=build /app/apps/worker/dist /app/apps/worker/dist
 COPY --from=build /app/apps/worker/package.json /app/apps/worker/
 WORKDIR /app/apps/worker

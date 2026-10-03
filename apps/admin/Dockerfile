@@ -16,6 +16,9 @@ RUN pnpm --filter @hailing/admin run build
 FROM base AS runtime
 ENV NODE_ENV=production PORT=3000
 COPY --from=build /app/node_modules /app/node_modules
+# pnpm workspaces: ship the portal's own node_modules + @hailing/* packages.
+COPY --from=build /app/apps/admin/node_modules /app/apps/admin/node_modules
+COPY --from=build /app/packages /app/packages
 COPY --from=build /app/apps/admin/.next /app/apps/admin/.next
 COPY --from=build /app/apps/admin/public /app/apps/admin/public
 COPY --from=build /app/apps/admin/package.json /app/apps/admin/

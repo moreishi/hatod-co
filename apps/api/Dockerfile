@@ -30,7 +30,12 @@ RUN pnpm --filter "@hailing/api" run build
 
 FROM base AS runtime
 ENV NODE_ENV=production PORT=3001
+# pnpm workspaces: each app's direct deps live in apps/api/node_modules
+# (symlinks into /app/node_modules/.pnpm), and @hailing/* imports resolve
+# into /app/packages — all three must ship, not just the root store.
 COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/api/node_modules /app/apps/api/node_modules
+COPY --from=build /app/packages /app/packages
 COPY --from=build /app/apps/api/dist /app/apps/api/dist
 COPY --from=build /app/apps/api/package.json /app/apps/api/
 WORKDIR /app/apps/api

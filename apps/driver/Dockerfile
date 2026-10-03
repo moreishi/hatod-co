@@ -16,6 +16,9 @@ RUN pnpm --filter @hailing/driver run build
 FROM base AS runtime
 ENV NODE_ENV=production PORT=3005
 COPY --from=build /app/node_modules /app/node_modules
+# pnpm workspaces: ship the portal's own node_modules + @hailing/* packages.
+COPY --from=build /app/apps/driver/node_modules /app/apps/driver/node_modules
+COPY --from=build /app/packages /app/packages
 COPY --from=build /app/apps/driver/.next /app/apps/driver/.next
 COPY --from=build /app/apps/driver/public /app/apps/driver/public
 COPY --from=build /app/apps/driver/package.json /app/apps/driver/
