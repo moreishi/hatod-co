@@ -137,6 +137,12 @@ ROUTING_PROVIDER=osrm
 
 Click **Deploy**. Watch logs until `hailing api listening on :3001/api`.
 
+Note: the api image handles its own Prisma client — it runs
+`prisma generate --schema prisma/postgres/schema.prisma` during the build
+(the SQLite schema's client lacks the `mode: "insensitive"` filter types the
+prod code uses), so you never need `prisma generate` by hand. Only
+`migrate deploy` (§6) stays manual.
+
 ---
 
 ## 6. Run database migrations (must be explicit)

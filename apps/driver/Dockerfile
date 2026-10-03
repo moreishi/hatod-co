@@ -3,12 +3,14 @@ RUN corepack enable
 WORKDIR /app
 
 FROM base AS build
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json tsconfig.base.json ./
 COPY apps/driver/package.json apps/driver/
 COPY packages/constants/package.json packages/constants/
-RUN pnpm install --filter @hailing/driver --frozen-lockfile
+RUN pnpm install --filter "@hailing/driver..." --frozen-lockfile
 COPY apps/driver apps/driver
 COPY packages/constants packages/constants
+# Build workspace deps first (their types live in dist/).
+RUN pnpm --filter @hailing/driver^... run build
 RUN pnpm --filter @hailing/driver run build
 
 FROM base AS runtime

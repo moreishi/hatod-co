@@ -3,17 +3,30 @@ RUN corepack enable
 WORKDIR /app
 
 FROM base AS build
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/constants/package.json packages/constants/
 COPY packages/data/package.json packages/data/
+COPY packages/routing/package.json packages/routing/
 COPY packages/notifications/package.json packages/notifications/
-RUN pnpm install --filter @hailing/api --frozen-lockfile
+# "..." = also install the workspace deps' own dependencies (their build
+# scripts need typescript etc.), not just the api's.
+RUN pnpm install --filter "@hailing/api..." --frozen-lockfile
 COPY apps/api apps/api
 COPY packages/constants packages/constants
 COPY packages/data packages/data
+COPY packages/routing packages/routing
 COPY packages/notifications packages/notifications
-RUN pnpm --filter @hailing/api run build
+# Build the workspace deps first: their types live in dist/ and the
+# api's tsconfig extends the root tsconfig.base.json (turbo does this
+# ordering in CI; pnpm's ^... selector builds only the api's deps).
+RUN pnpm --filter "@hailing/api^..." run build
+# Generate the Prisma client from the POSTGRES schema — prod code uses
+# Postgres-only filter features (mode: "insensitive") that the SQLite
+# schema's client rejects. Install runs before the schema is copied, so
+# the postinstall auto-generate never fires in Docker.
+RUN pnpm --filter "@hailing/api" exec prisma generate --schema prisma/postgres/schema.prisma
+RUN pnpm --filter "@hailing/api" run build
 
 FROM base AS runtime
 ENV NODE_ENV=production PORT=3001
