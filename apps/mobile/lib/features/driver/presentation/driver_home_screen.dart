@@ -322,6 +322,23 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             zoom: MapConstants.homeZoom,
             current: _position ?? MapConstants.gensan,
           ),
+          Positioned(
+            right: 16,
+            bottom: 210,
+            child: FloatingActionButton.small(
+              key: const Key('driverRecenter'),
+              heroTag: 'driver_recenter',
+              backgroundColor: Colors.white,
+              foregroundColor: BrandColors.primary,
+              tooltip: 'Recenter map',
+              onPressed: () {
+                final p = _position ?? MapConstants.gensan;
+                _mapController.move(ll.LatLng(p.lat, p.lng),
+                    MapConstants.homeZoom);
+              },
+              child: const Icon(Icons.my_location),
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -329,11 +346,59 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
           Card(
-            child: ListTile(
-              title: Text(_online ? 'ONLINE' : 'OFFLINE', key: const Key('status')),
-              trailing: Switch(
-                value: _online,
-                onChanged: _busy ? null : _toggle,
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _online ? BrandColors.success : Colors.grey[500],
+                      boxShadow: _online
+                          ? [
+                              BoxShadow(
+                                color:
+                                    BrandColors.success.withValues(alpha: 0.35),
+                                blurRadius: 0,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _online ? 'ONLINE' : 'OFFLINE',
+                          key: const Key('status'),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              color: BrandColors.ink),
+                        ),
+                        Text(
+                          _online
+                              ? 'You are receiving ride requests'
+                              : 'Go online to start receiving requests',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _online,
+                    onChanged: _busy ? null : _toggle,
+                  ),
+                ],
               ),
             ),
           ),
@@ -375,8 +440,38 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               ),
             )
           else
-            const Card(
-              child: ListTile(title: Text('No active ride. Stay online for offers.')),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 30),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('No active ride',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: BrandColors.ink)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _online
+                                ? 'Incoming requests will appear here.'
+                                : 'You are offline. Toggle online above to receive requests.',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           Row(
             children: [
@@ -397,7 +492,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       ),
                     ));
                   },
-                  child: const Text('My trips'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.receipt_long_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Text('My trips'),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -413,7 +515,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                       builder: (_) => EarningsScreen(repository: repo),
                     ));
                   },
-                  child: const Text('Earnings'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.payments_rounded, size: 18),
+                      SizedBox(width: 6),
+                      Text('Earnings'),
+                    ],
+                  ),
                 ),
               ),
             ],

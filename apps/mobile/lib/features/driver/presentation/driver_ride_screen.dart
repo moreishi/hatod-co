@@ -189,7 +189,14 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
                     ),
                   OutlinedButton(
                     onPressed: _openChat,
-                    child: const Text('Open chat'),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.chat_bubble_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('Open chat'),
+                      ],
+                    ),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),

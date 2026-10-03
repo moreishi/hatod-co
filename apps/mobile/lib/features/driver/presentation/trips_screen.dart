@@ -41,7 +41,17 @@ class _DriverTripsScreenState extends State<DriverTripsScreen> {
       body: trips == null
           ? const Center(child: CircularProgressIndicator())
           : trips.isEmpty
-              ? const Center(child: Text('No trips yet.'))
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.route_outlined,
+                          size: 48, color: Colors.black26),
+                      SizedBox(height: 12),
+                      Text('No trips yet.'),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: trips.length,

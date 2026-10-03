@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/list_row.dart';
 
 /// Driver identity + sign out. Vehicle details come from the active
@@ -33,8 +34,11 @@ class DriverProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const CircleAvatar(
-                    radius: 38, child: Icon(Icons.person, size: 40)),
+                CircleAvatar(
+                  radius: 38,
+                  backgroundColor: BrandColors.primary,
+                  child: const Icon(Icons.person, size: 40, color: Colors.white),
+                ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,6 +53,15 @@ class DriverProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text('Account',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: Colors.grey)),
           ),
           if (vehicleBits.isNotEmpty)
             HatodListRow(

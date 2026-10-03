@@ -40,17 +40,63 @@ class _EarningsScreenState extends State<EarningsScreen> {
               padding: const EdgeInsets.all(24),
               children: [
                 Card(
-                  child: ListTile(
-                    title: Text(summary.balancePhp, key: const Key('balance')),
-                    subtitle: Text(
-                        '${summary.tripCount} trips · ${summary.totalPhp} earned'),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: const LinearGradient(
+                        colors: [BrandColors.primary, BrandColors.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Wallet balance',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(summary.balancePhp,
+                            key: const Key('balance'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                                fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 4),
+                        Text(
+                            '${summary.tripCount} trips · ${summary.totalPhp} earned',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 13)),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text('Recent earnings'),
+                const SizedBox(height: 20),
+                const Text('Recent earnings',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: BrandColors.ink)),
                 const SizedBox(height: 8),
                 if (summary.recent.isEmpty)
-                  const Text('No earnings yet.')
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        Icon(Icons.receipt_long_rounded,
+                            color: Colors.grey[400], size: 36),
+                        const SizedBox(height: 8),
+                        Text('No earnings yet.',
+                            style: TextStyle(color: Colors.grey[600])),
+                      ],
+                    ),
+                  )
                 else
                   for (final entry in summary.recent)
                     _EarningCard(entry: entry),
