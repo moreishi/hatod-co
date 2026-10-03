@@ -101,14 +101,16 @@ other containers can reach them.
 
 **+ Create → Application** → this repo.
 
-- **Base directory**: `apps/api`
-- **Build pack**: Dockerfile (Coolify auto-detects `apps/api/Dockerfile`)
-- **Dockerfile location**: keep it as plain `Dockerfile` — Coolify **prepends
-  the base directory**, so writing `apps/api/Dockerfile` here makes it look
-  for `apps/api/apps/api/Dockerfile` and the build fails with
-  `lstat .../apps/api/apps: no such file or directory`. Same for the worker
-  and the four portals: base dir already points at the app folder, so the
-  Dockerfile path is always just `Dockerfile`.
+- **Base directory**: `.` (the **repo root** — the Dockerfile copies
+  `pnpm-workspace.yaml`, `turbo.json`, `packages/*` and `apps/api`, so the
+  build context must be the monorepo, not the app folder. A context of
+  `apps/api` fails every COPY with `lstat ...: not found`.)
+- **Dockerfile location**: `apps/api/Dockerfile` (relative to the base dir).
+  ⚠️ Do **not** set base dir to `apps/api` *and* the Dockerfile path to
+  `apps/api/Dockerfile` — Coolify joins them and looks for the doubled
+  `apps/api/apps/api/Dockerfile`, which fails with "No such file or
+  directory".
+- **Build pack**: Dockerfile
 - **Port**: `3001`
 - **Domains**: `https://api.yourdomain.com`
 
@@ -128,9 +130,10 @@ ROUTING_PROVIDER=osrm
 - Use the postgres **internal** hostname, not `localhost`.
 - **Add a service dependency** on the Postgres resource (so it starts first).
 - Mark every env var **"Runtime only"** (untick *Available at Buildtime*).
-  Our Dockerfile doesn't declare those `ARG`s so the build still works, but
-  build-time values land in the image metadata — and `DATABASE_URL` /
-  `JWT_SECRET` must never end up there.
+  Verified in a real deploy log: Coolify injects build-time vars as
+  `ARG JWT_SECRET=<value>` lines straight into the generated Dockerfile, so
+  the secret value lands in the build log and image metadata — `DATABASE_URL`
+  and `JWT_SECRET` must never be build-time.
 
 Click **Deploy**. Watch logs until `hailing api listening on :3001/api`.
 
@@ -161,7 +164,8 @@ guard refuses non-local URLs, and sample accounts must never exist in prod.
 
 **+ Create → Application**, same repo:
 
-- **Base directory**: `apps/worker` · Dockerfile auto-detected · **no domain/port**
+- **Base directory**: `.` (repo root — same reason as the api, §5)
+- **Dockerfile location**: `apps/worker/Dockerfile` · **no domain/port**
 - Env:
   ```
   DATABASE_URL=<same as api>
@@ -180,7 +184,9 @@ safely logs instead of sending — deploy is fine without it.
 ## 8. Deploy the four web portals
 
 Repeat **Application** for each: `apps/admin`, `apps/agency`, `apps/rider`,
-`apps/driver`. Each is a Next.js Dockerfile on its own port/domain:
+`apps/driver`. Each is a Next.js Dockerfile on its own port/domain. Same
+pattern as §5: **Base directory** `.` and **Dockerfile location**
+`apps/<portal>/Dockerfile`:
 
 | Dir | Port | Domain |
 | --- | --- | --- |
