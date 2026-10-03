@@ -205,6 +205,20 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
     _quoteTimer = Timer(const Duration(milliseconds: 600), _getFare);
   }
 
+  /// Swap the pickup and destination and re-price the reverse trip.
+  void _swapEndpoints() {
+    final pickup = _pickupPlace;
+    final dropoff = _dropoffPlace;
+    if (pickup == null || dropoff == null) return;
+    setState(() {
+      _pickupPlace = dropoff;
+      _dropoffPlace = pickup;
+      _quote = null;
+      _routePoints = [];
+    });
+    _scheduleQuote();
+  }
+
   /// Presets Home with the given endpoints (used by repeat + return-trip)
   /// after popping back from the order detail.
   void _presetTrip(HatodPlace pickup, HatodPlace dropoff) {
@@ -485,19 +499,33 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Where are you going?',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Where are you going?',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700)),
+                          ),
+                          if (_pickupPlace != null && _dropoffPlace != null)
+                            IconButton(
+                              key: const Key('swapRoute'),
+                              tooltip: 'Swap pickup and destination',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _swapEndpoints,
+                              icon: const Icon(Icons.swap_vert,
+                                  color: BrandColors.primary),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                         _placeCard(
                           key: const Key('pickupCard'),
-                          icon: Icons.my_location,
                           iconColor: BrandColors.success,
                           label: 'Pickup',
                           place: _pickupPlace,
@@ -508,7 +536,6 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                         const Divider(height: 16),
                         _placeCard(
                           key: const Key('dropoffCard'),
-                          icon: Icons.location_on,
                           iconColor: BrandColors.danger,
                           label: 'Destination',
                           place: _dropoffPlace,
@@ -521,6 +548,26 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                   ),
                 ),
               ),
+            ),
+          ),
+          // Recenter the map on the driver's current GPS.
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.sizeOf(context).height * 0.47,
+            child: FloatingActionButton.small(
+              key: const Key('recenterMap'),
+              heroTag: 'recenter',
+              backgroundColor: Colors.white,
+              foregroundColor: BrandColors.primary,
+              tooltip: 'Recenter map',
+              onPressed: () {
+                final p = _current;
+                if (p != null) {
+                  _mapController.move(ll.LatLng(p.lat, p.lng),
+                      MapConstants.homeZoom);
+                }
+              },
+              child: const Icon(Icons.my_location),
             ),
           ),
           // Bottom sheet with vehicle / fare / booking controls.
@@ -556,6 +603,12 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
+                      const Text('Choose your ride',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: BrandColors.ink)),
+                      const SizedBox(height: 8),
                       VehicleCards(
                         selected: _vehicle,
                         fromFares: _categoryFares(),
@@ -699,7 +752,6 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
 
   Widget _placeCard({
     Key? key,
-    required IconData icon,
     required Color iconColor,
     required String label,
     required HatodPlace? place,
@@ -711,11 +763,30 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
       borderRadius: const BorderRadius.all(Radius.circular(12)),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Icon(icon, color: iconColor),
-            const SizedBox(width: 12),
+            SizedBox(
+              width: 24,
+              child: Center(
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: 0.35),
+                        blurRadius: 0,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
