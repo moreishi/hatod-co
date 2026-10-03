@@ -20,6 +20,25 @@ class HatodMap extends StatelessWidget {
   /// Initial zoom when a single focus point drives the camera.
   final double? zoom;
 
+  /// Height of UI docked over the map's bottom edge (e.g. the order-detail
+  /// sheet). When set, both pins are fitted into the area ABOVE it so the
+  /// destination never hides behind the sheet. 0 = use the plain camera.
+  final double bottomInset;
+
+  /// Camera fit that keeps pickup and dropoff both on screen, respecting
+  /// any bottom inset. Shared by the map and the detail screens' recenter
+  /// buttons so "recenter" reproduces the exact default view.
+  static CameraFit routeCameraFit(
+    HatodMapPoint a,
+    HatodMapPoint b, {
+    double bottomInset = 0,
+  }) {
+    return CameraFit.coordinates(
+      coordinates: [ll.LatLng(a.lat, a.lng), ll.LatLng(b.lat, b.lng)],
+      padding: EdgeInsets.fromLTRB(60, 100, 60, bottomInset),
+    );
+  }
+
   const HatodMap({
     super.key,
     this.pickup,
@@ -30,6 +49,7 @@ class HatodMap extends StatelessWidget {
     this.height = 280,
     this.controller,
     this.zoom,
+    this.bottomInset = 0,
   });
 
   ll.LatLng _to(HatodMapPoint p) => ll.LatLng(p.lat, p.lng);
@@ -120,6 +140,13 @@ class HatodMap extends StatelessWidget {
           options: MapOptions(
             initialCenter: _to(camera.center),
             initialZoom: camera.zoom,
+            // Overridden by the fit below when set: fit BOTH pins into the
+            // visible area (above any bottom-docked UI) by default.
+            initialCameraFit:
+                pickup != null && dropoff != null && bottomInset > 0
+                    ? routeCameraFit(pickup!, dropoff!,
+                        bottomInset: bottomInset)
+                    : null,
             minZoom: MapConstants.minZoom,
             maxZoom: MapConstants.maxZoom,
           ),

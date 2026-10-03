@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' as ll;
 import '../../../core/constants/app_constants.dart';
 import '../../booking/domain/ride.dart';
 import '../../maps/domain/map_models.dart';
@@ -137,13 +136,15 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
           : Stack(
               children: [
                 // Fullscreen map background: pins + route fill the screen,
-                // details live in the sheet on top.
+                // details live in the sheet on top. The camera fits BOTH
+                // pins into the visible area above the sheet.
                 HatodMap(
                   key: const Key('map'),
                   height: null,
                   controller: _mapController,
                   pickup: pickup,
                   dropoff: dropoff,
+                  bottomInset: 480,
                   route: pickup != null && dropoff != null
                       ? MapMath.straightLine(pickup, dropoff)
                       : const [],
@@ -159,10 +160,10 @@ class _DriverRideScreenState extends State<DriverRideScreen> {
                     tooltip: 'Show the whole route',
                     onPressed: () {
                       if (pickup == null || dropoff == null) return;
-                      final cam = MapMath.cameraFor(pickup, dropoff);
-                      _mapController.move(
-                          ll.LatLng(cam.center.lat, cam.center.lng),
-                          cam.zoom);
+                      final cam = HatodMap.routeCameraFit(pickup, dropoff,
+                              bottomInset: 480)
+                          .fit(_mapController.camera);
+                      _mapController.move(cam.center, cam.zoom);
                     },
                     child: const Icon(Icons.route),
                   ),

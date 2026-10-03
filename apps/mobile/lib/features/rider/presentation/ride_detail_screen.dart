@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' as ll;
 import '../../../core/constants/app_constants.dart';
 import '../../booking/data/booking_repository.dart';
 import '../../booking/domain/ride.dart';
@@ -113,6 +112,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
             controller: _mapController,
             pickup: pickup,
             dropoff: dropoff,
+            bottomInset: 480,
             route: pickup != null && dropoff != null
                 ? MapMath.straightLine(pickup, dropoff)
                 : const [],
@@ -128,9 +128,10 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
               tooltip: 'Show the whole route',
               onPressed: () {
                 if (pickup == null || dropoff == null) return;
-                final cam = MapMath.cameraFor(pickup, dropoff);
-                _mapController.move(
-                    ll.LatLng(cam.center.lat, cam.center.lng), cam.zoom);
+                final cam = HatodMap.routeCameraFit(pickup, dropoff,
+                        bottomInset: 480)
+                    .fit(_mapController.camera);
+                _mapController.move(cam.center, cam.zoom);
               },
               child: const Icon(Icons.route),
             ),
