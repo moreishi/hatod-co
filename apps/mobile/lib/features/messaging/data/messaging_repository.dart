@@ -17,10 +17,16 @@ class MessagingRepository {
     }
   }
 
+  /// Latest page of the conversation in chronological order (oldest→newest),
+  /// so the newest message is the last item — the view can pin it to the
+  /// bottom like Messenger/Telegram. The API returns newest-first for cursor
+  /// paging; we flip it here at the presentation boundary.
   Future<List<ChatMessage>> history(String conversationId, {int limit = 30}) async {
     final body = await api.get(
         '/api/conversations/$conversationId/messages?limit=$limit') as List;
-    return body.map((m) => ChatMessage.fromJson(m as Map<String, dynamic>)).toList();
+    final messages =
+        body.map((m) => ChatMessage.fromJson(m as Map<String, dynamic>)).toList();
+    return messages.reversed.toList();
   }
 
   Future<ChatMessage> send(String conversationId, String content) async {
