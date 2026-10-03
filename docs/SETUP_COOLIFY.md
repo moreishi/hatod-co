@@ -103,6 +103,12 @@ other containers can reach them.
 
 - **Base directory**: `apps/api`
 - **Build pack**: Dockerfile (Coolify auto-detects `apps/api/Dockerfile`)
+- **Dockerfile location**: keep it as plain `Dockerfile` — Coolify **prepends
+  the base directory**, so writing `apps/api/Dockerfile` here makes it look
+  for `apps/api/apps/api/Dockerfile` and the build fails with
+  `lstat .../apps/api/apps: no such file or directory`. Same for the worker
+  and the four portals: base dir already points at the app folder, so the
+  Dockerfile path is always just `Dockerfile`.
 - **Port**: `3001`
 - **Domains**: `https://api.yourdomain.com`
 
@@ -121,6 +127,10 @@ ROUTING_PROVIDER=osrm
   `localstage-only-dev-secret` default to prod.
 - Use the postgres **internal** hostname, not `localhost`.
 - **Add a service dependency** on the Postgres resource (so it starts first).
+- Mark every env var **"Runtime only"** (untick *Available at Buildtime*).
+  Our Dockerfile doesn't declare those `ARG`s so the build still works, but
+  build-time values land in the image metadata — and `DATABASE_URL` /
+  `JWT_SECRET` must never end up there.
 
 Click **Deploy**. Watch logs until `hailing api listening on :3001/api`.
 
