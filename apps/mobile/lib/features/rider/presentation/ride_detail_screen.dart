@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import '../../../core/constants/app_constants.dart';
 import '../../booking/data/booking_repository.dart';
 import '../../booking/domain/ride.dart';
@@ -42,6 +44,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
   Ride? _ride;
   Conversation? _convo;
   bool? _liked;
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -107,11 +110,30 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
           HatodMap(
             key: const Key('map'),
             height: null,
+            controller: _mapController,
             pickup: pickup,
             dropoff: dropoff,
             route: pickup != null && dropoff != null
                 ? MapMath.straightLine(pickup, dropoff)
                 : const [],
+          ),
+          Positioned(
+            right: 16,
+            bottom: 480,
+            child: FloatingActionButton.small(
+              key: const Key('detailRecenter'),
+              heroTag: 'detail_recenter',
+              backgroundColor: Colors.white,
+              foregroundColor: BrandColors.primary,
+              tooltip: 'Show the whole route',
+              onPressed: () {
+                if (pickup == null || dropoff == null) return;
+                final cam = MapMath.cameraFor(pickup, dropoff);
+                _mapController.move(
+                    ll.LatLng(cam.center.lat, cam.center.lng), cam.zoom);
+              },
+              child: const Icon(Icons.route),
+            ),
           ),
           Positioned(
             top: 0,
@@ -152,19 +174,7 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                       const SizedBox(height: 12),
                       _ratingRow(),
                       const Divider(height: 24),
-                      _placeRow(
-                        icon: Icons.my_location,
-                        color: BrandColors.success,
-                        label: 'PICKUP',
-                        value: ride.pickupLabel,
-                      ),
-                      const SizedBox(height: 8),
-                      _placeRow(
-                        icon: Icons.location_on,
-                        color: BrandColors.danger,
-                        label: 'DESTINATION',
-                        value: ride.dropoffLabel,
-                      ),
+                      _routeBlock(ride),
                       const SizedBox(height: 12),
                       Text(
                         '${formatTripDate(ride.requestedAt)} · ${formatTripTime(ride.requestedAt)} → ${formatTripTime(ride.completedAt)}',
@@ -172,34 +182,49 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
                             fontSize: 12, color: BrandColors.secondary),
                       ),
                       const SizedBox(height: 12),
-                      _receiptRow('Fare', ride.fareCentavos),
-                      if (ride.tipCentavos > 0) ...[
-                        const SizedBox(height: 4),
-                        _receiptRow('Tip', ride.tipCentavos),
-                      ],
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Text('Total fare',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  color: BrandColors.secondary)),
-                          const Spacer(),
-                          Text(
-                            _php(ride.fareCentavos + ride.tipCentavos),
-                            style: const TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.w800),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'Paid with ${ride.paymentMethod == 'WALLET' ? 'E-Wallet' : 'Cash'}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: BrandColors.secondary),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: BrandColors.primary.withValues(alpha: 0.05),
+                          borderRadius: const BorderRadius.all(
+                              Radius.circular(12)),
+                        ),
+                        child: Column(
+                          children: [
+                            _receiptRow('Fare', ride.fareCentavos),
+                            if (ride.tipCentavos > 0) ...[
+                              const SizedBox(height: 4),
+                              _receiptRow('Tip', ride.tipCentavos),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Text('Total fare',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: BrandColors.ink)),
+                                const Spacer(),
+                                Text(
+                                  _php(
+                                      ride.fareCentavos + ride.tipCentavos),
+                                  style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Paid with ${ride.paymentMethod == 'WALLET' ? 'E-Wallet' : 'Cash'}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: BrandColors.secondary),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       if (pickupPlace != null && dropoffPlace != null) ...[
@@ -243,9 +268,10 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     ];
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 24,
-          child: Icon(Icons.person, size: 28),
+          backgroundColor: BrandColors.primary,
+          child: const Icon(Icons.person, size: 28, color: Colors.white),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -364,33 +390,66 @@ class _RideDetailScreenState extends State<RideDetailScreen> {
     );
   }
 
-  Widget _placeRow({
-    required IconData icon,
-    required Color color,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: BrandColors.secondary)),
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600)),
-            ],
-          ),
+  /// Pickup -> destination block with the map-app dot rail
+  /// (green dot, connector line, red dot) matching the order cards.
+  Widget _routeBlock(Ride ride) {
+    Widget stop({required String label, required String value}) {
+      return Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: BrandColors.secondary)),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w600)),
+          ],
         ),
-      ],
+      );
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 12,
+            child: Column(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                      color: BrandColors.success, shape: BoxShape.circle),
+                ),
+                Expanded(
+                  child: Container(width: 2, color: BrandColors.border),
+                ),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                      color: BrandColors.danger, shape: BoxShape.circle),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                stop(label: 'PICKUP', value: ride.pickupLabel),
+                const SizedBox(height: 20),
+                stop(label: 'DESTINATION', value: ride.dropoffLabel),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

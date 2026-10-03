@@ -72,77 +72,104 @@ class TripOrderCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.my_location,
-                      size: 18, color: BrandColors.success),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('PICKUP',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: BrandColors.secondary)),
-                        Text(pickupLabel,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Map-app route rail: green dot -> line -> red dot.
+                SizedBox(
+                  width: 12,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: BrandColors.success,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          width: 2,
+                          color: BrandColors.border,
+                        ),
+                      ),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: BrandColors.danger,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('PICKUP',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: BrandColors.secondary)),
+                                Text(pickupLabel,
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '₱${(fareCentavos / 100).toStringAsFixed(2)}',
                             style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600)),
-                      ],
-                    ),
+                                fontSize: 16, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DESTINATION',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: BrandColors.secondary)),
+                          Text(dropoffLabel,
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              dateLine,
+                              style: const TextStyle(
+                                  fontSize: 12, color: BrandColors.secondary),
+                            ),
+                          ),
+                          StatusBadge(status: status),
+                        ],
+                      ),
+                    ],
                   ),
-                  Text(
-                    '₱${(fareCentavos / 100).toStringAsFixed(2)}',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.location_on,
-                      size: 18, color: BrandColors.danger),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('DESTINATION',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: BrandColors.secondary)),
-                        Text(dropoffLabel,
-                            style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      dateLine,
-                      style: const TextStyle(
-                          fontSize: 12, color: BrandColors.secondary),
-                    ),
-                  ),
-                  StatusBadge(status: status),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

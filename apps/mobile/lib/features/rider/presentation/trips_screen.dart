@@ -88,8 +88,21 @@ class _RiderTripsScreenState extends State<RiderTripsScreen> {
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('No completed trips yet.')),
+                      SizedBox(height: 110),
+                      Center(
+                        child: Column(
+                          children: [
+                            Icon(Icons.route_outlined,
+                                size: 48, color: Colors.black26),
+                            SizedBox(height: 12),
+                            Text('No completed trips yet.'),
+                            SizedBox(height: 4),
+                            Text('Book a ride and it will show up here.',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
                     ],
                   )
                 : ListView(
@@ -120,8 +133,17 @@ class _RiderTripsScreenState extends State<RiderTripsScreen> {
                         ),
                       const SizedBox(height: 8),
                     ],
-                    for (final ride in completed)
-                      TripOrderCard(
+                    if (completed.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text('Completed',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: BrandColors.secondary)),
+                      ),
+                      for (final ride in completed)
+                        TripOrderCard(
                         pickupLabel: ride.pickupLabel,
                         dropoffLabel: ride.dropoffLabel,
                         fareCentavos: ride.fareCentavos,
@@ -140,6 +162,7 @@ class _RiderTripsScreenState extends State<RiderTripsScreen> {
                           ),
                         )),
                       ),
+                    ],
                     if (completed.isEmpty)
                       const Center(
                           child: Padding(
