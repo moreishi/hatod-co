@@ -4,14 +4,18 @@
 -- add_sessions era) but were never mirrored as Postgres migrations — caught
 -- live when staging seeding hit P2022 (Document.reviewNote). Column shapes
 -- mirror `prisma migrate diff --from-empty --to-schema-datamodel` exactly.
+--
+-- Written with IF NOT EXISTS: the first prod attempt half-applied (the Ride
+-- ALTERs committed, the run died before the Document one), so the migration
+-- must no-op on existing columns to converge any state.
 
 -- AlterTable
-ALTER TABLE "Ride" ADD COLUMN "pickupLng" DOUBLE PRECISION;
-ALTER TABLE "Ride" ADD COLUMN "dropoffLng" DOUBLE PRECISION;
-ALTER TABLE "Ride" ADD COLUMN "tipCentavos" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "Ride" ADD COLUMN "changeFor" INTEGER;
-ALTER TABLE "Ride" ADD COLUMN "riderNote" TEXT DEFAULT '';
-ALTER TABLE "Ride" ADD COLUMN "vehicleType" TEXT;
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "pickupLng" DOUBLE PRECISION;
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "dropoffLng" DOUBLE PRECISION;
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "tipCentavos" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "changeFor" INTEGER;
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "riderNote" TEXT DEFAULT '';
+ALTER TABLE "Ride" ADD COLUMN IF NOT EXISTS "vehicleType" TEXT;
 
 -- AlterTable
-ALTER TABLE "Document" ADD COLUMN "reviewNote" TEXT;
+ALTER TABLE "Document" ADD COLUMN IF NOT EXISTS "reviewNote" TEXT;
