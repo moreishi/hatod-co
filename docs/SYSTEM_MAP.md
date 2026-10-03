@@ -244,10 +244,12 @@ building Next.js there.
   ```
   Put this in a Coolify **deploy hook / pre-build command**, or a one-shot
   "build & deploy" service, so schema lands before traffic.
-- **Drift caveat:** `DeviceToken` and `FareSchedule` were applied to the dev DB
-  via raw SQL and have **no committed migration files**. Before prod works,
-  generate real migrations for them (`prisma migrate dev --create-only`) and
-  commit them, or prod `migrate deploy` will not create those tables.
+- **Migration coverage (closed):** `DeviceToken`, `FareSchedule`, the Ride
+  booking-extras columns, and `Document.reviewNote` initially shipped without
+  postgres migrations (dev DBs got them via the SQLite path). Committed
+  migrations `006`/`007` close the gap, and CI replays all migrations into a
+  shadow DB and fails on any schema drift — keep new models shipping with a
+  migration in the same PR.
 - **Seed** (`prisma:seed`, `prisma:seed-places`) is guarded to refuse
   non-local `DATABASE_URL`. Do **not** seed prod. Provision real agencies/admins
   via the admin portal + a bootstrap script you run deliberately.
@@ -281,8 +283,8 @@ The Flutter app is not a VPS service. For pilot testers:
 - [ ] postgres=PostGIS, redis, (rabbitmq) healthy, **internal only**.
 - [ ] `JWT_SECRET` strong, identical across api + 4 portals; never the
       `localstage-only-dev-secret` default.
-- [ ] Committed migrations for `DeviceToken` + `FareSchedule` (§10); prod schema
-      matches `prisma/postgres/schema.prisma`.
+- [x] Migration coverage 23/23 (`000_init`…`007`, CI shadow-diff gate); prod
+      schema matches `prisma/postgres/schema.prisma`.
 - [ ] FCM config mounted; `NODE_ENV=production` verified (no devCode leakage).
 - [ ] SMS provider chosen + volume estimate documented (AGENTS rule 5).
 - [ ] Scheduled DB backups to object storage + one restore test.

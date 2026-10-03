@@ -58,7 +58,10 @@ replace it. Production uses a second schema:
   run `node apps/api/scripts/check-schema-drift.mjs` (CI enforces this).
 - Generate a Postgres migration with
   `prisma migrate diff` (see `docs` history), never by hand-editing the baseline.
-- CI `postgres` job deploys both migrations to `postgis/postgis:16-3.4`.
+- CI `postgres` job deploys both migrations to `postgis/postgis:16-3.4`,
+  then replays them into a shadow DB and diffs against the schema — a model
+  or column without a committed migration **fails CI** (this closed the
+  `DeviceToken`/`FareSchedule`/`reviewNote` gap found on first prod deploy).
   Production deploys generate the client from the Postgres schema and run
   `prisma migrate deploy --schema prisma/postgres/schema.prisma`.
 

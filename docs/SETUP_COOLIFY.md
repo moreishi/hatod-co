@@ -162,11 +162,35 @@ npx prisma migrate deploy --schema prisma/postgres/schema.prisma
 ```
 
 All 23 tables are covered by committed migrations `000_init` →
-`006_device_token_fare_schedule` (the latter closed the old raw-SQL gap for
-`DeviceToken`/`FareSchedule`), so `migrate deploy` creates everything. Keep
-that rule: any new model ships with a committed migration in the same PR.
+`007_ride_extras_document_review_note` (006/007 closed the raw-SQL gaps for
+`DeviceToken`/`FareSchedule`/Ride extras/`reviewNote`), so `migrate deploy`
+creates everything. Keep that rule: any new model ships with a committed
+migration in the same PR — CI replays the migrations into a shadow DB and
+fails the build on any drift.
 
-### 6a. Seeding a staging environment (explicit opt-in)
+### 6a. Recovering from a failed migration (P3009)
+
+`migrate deploy` stops with **P3009** when a previous migration attempt is
+marked failed in `_prisma_migrations`. Live example: the first `007` attempt
+half-applied (the Ride `ALTER`s committed, the run died before the
+`Document` one), so the retry hit `42701 column already exists` while
+`reviewNote` was still missing.
+
+Recovery (verified live):
+
+1. Diagnose: `npx prisma migrate status --schema prisma/postgres/schema.prisma`
+2. Mark the failed migration rolled back:
+   `npx prisma migrate resolve --rolled-back <migration_name> --schema prisma/postgres/schema.prisma`
+3. Redeploy the api if the migration file changed since the attempt, then
+   `npx prisma migrate deploy --schema prisma/postgres/schema.prisma` again.
+
+Lesson for writing migrations: **write corrective migrations idempotently**
+(`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS` where sensible) so
+they converge any half-applied state instead of exploding on retry. DDL
+errors mid-migration can leave earlier statements committed — don't assume
+the failed attempt applied nothing.
+
+### 6b. Seeding a staging environment (explicit opt-in)
 
 The seed refuses any non-local database unless you set `ALLOW_SEED=true`.
 For a cloud staging instance, redeploy the api, then in its web terminal:
@@ -264,6 +288,7 @@ Dockerfiles themselves). Match your log line to the fix:
 | `error TS5083: Cannot read file '/app/tsconfig.base.json'` and `TS2307: Cannot find module '@hailing/*'` | Dockerfile didn't copy the root tsconfig or build workspace deps before the app | Fixed in repo (tsconfig.base.json copied; `pnpm --filter "@hailing/<app>^..." run build` before the app build; install uses the `...` filter). Redeploy latest `develop` |
 | Container crash-loops: `ERR_MODULE_NOT_FOUND: Cannot find package 'reflect-metadata'` | pnpm workspaces keep each app's deps in `apps/<app>/node_modules` + `@hailing/*` in `/app/packages`; the runtime stage shipped only the root store | Fixed in repo (runtime stages copy `apps/<app>/node_modules` + `/app/packages`). Redeploy latest `develop` |
 | Worker crash-loops: `@prisma/client did not initialize yet` | The worker image never generated the Prisma client (only the stub shipped) | Fixed in repo (worker image generates from the api's Postgres schema, copied into `apps/worker/prisma/`). Redeploy latest `develop` |
+| Api crash-loops at boot: `Nest can't resolve dependencies of the PlacesService (PrismaService, ?)` | A constructor param with an inline object type emits `design:paramtypes = Object`, which Nest can't resolve — only surfaces in real DI boot, not in direct-instantiation tests | Fixed in repo (`@Optional()` on the param). When adding services: constructor params must be classes with explicit tokens or `@Optional()` |
 
 Also seen: Coolify prints every build-time env var as an `ARG` line (value
 included) into the generated Dockerfile — keep secrets Runtime-only (§5).
