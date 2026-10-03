@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Optional,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -51,6 +52,10 @@ export class PlacesService {
 
     constructor(
       @Inject(PrismaService) private readonly prisma: PrismaService,
+      // The inline object type emits `design:paramtypes = Object`, which
+      // Nest cannot resolve as a provider — it must be marked optional so
+      // the `= {}` default applies instead of crashing bootstrap.
+      @Optional()
       opts: {
         nominatimFn?: (query: string) => Promise<NominatimHit[]>;
         reverseFetchFn?: typeof fetch;
