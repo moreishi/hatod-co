@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import {
   CLOSED_CONVERSATION_RETENTION_DAYS,
@@ -14,6 +14,22 @@ import {
 import { backoffMs } from "./backoff.js";
 import { resolveDatabaseUrl } from "./db-url.js";
 import { OutboxConsumer } from "./outbox.js";
+
+// Load a local apps/worker/.env for dev convenience (GOOGLE_APPLICATION_CREDENTIALS,
+// etc.). Already-set process env wins, so prod (Coolify) injection is unaffected
+// and a missing file is a silent no-op.
+const loadEnvFile = (
+  process as unknown as {
+    loadEnvFile?: (path: string) => void;
+  }
+).loadEnvFile;
+if (typeof loadEnvFile === "function" && existsSync(".env")) {
+  try {
+    loadEnvFile.call(process, ".env");
+  } catch {
+    // Malformed .env: ignore, fall back to process env.
+  }
+}
 
 process.env.DATABASE_URL = resolveDatabaseUrl();
 
