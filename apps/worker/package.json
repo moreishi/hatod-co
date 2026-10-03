@@ -16,7 +16,8 @@
   "dependencies": {
     "@hailing/constants": "workspace:*",
     "@hailing/notifications": "workspace:*",
-    "@prisma/client": "^6.0.0"
+    "@prisma/client": "^6.0.0",
+    "firebase-admin": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

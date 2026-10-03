@@ -15,6 +15,9 @@
     "lint": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "vitest run"
   },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
   "devDependencies": {
     "@hailing/constants": "workspace:*",
     "typescript": "^5.8.3",

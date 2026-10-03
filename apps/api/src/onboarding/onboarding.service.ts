@@ -156,7 +156,7 @@ export class OnboardingService {
         status,
         reviewedBy: reviewerId,
         reviewedAt: new Date(),
-        reviewNote: reviewNote.isEmpty ? null : reviewNote,
+        reviewNote: reviewNote === "" ? null : reviewNote,
       },
     });
   }

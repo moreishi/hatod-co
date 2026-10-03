@@ -4,6 +4,9 @@
 !.env.example
 *.pem
 *.key
+keys/
+**/firebase-adminsdk-*.json
+service-account*.json
 
 # Deps / build
 node_modules/
