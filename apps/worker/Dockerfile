@@ -11,9 +11,16 @@ RUN pnpm install --filter "@hailing/worker..." --frozen-lockfile
 COPY apps/worker apps/worker
 COPY packages/constants packages/constants
 COPY packages/notifications packages/notifications
+# The worker instantiates PrismaClient at runtime (@hailing/data) — generate
+# the client from the api's POSTGRES schema. The schema is copied INTO
+# apps/worker/prisma/ on purpose: a --schema path outside the project makes
+# Prisma infer the wrong project root and try to auto-install itself at the
+# workspace root (ERR_PNPM_ADDING_TO_ROOT). Generate is offline.
+COPY apps/api/prisma/postgres/schema.prisma apps/worker/prisma/postgres/
+RUN pnpm --filter "@hailing/worker" exec prisma generate --schema prisma/postgres/schema.prisma
 # Build workspace deps first (their types live in dist/).
-RUN pnpm --filter @hailing/worker^... run build
-RUN pnpm --filter @hailing/worker run build
+RUN pnpm --filter "@hailing/worker^..." run build
+RUN pnpm --filter "@hailing/worker" run build
 
 FROM base AS runtime
 ENV NODE_ENV=production
