@@ -166,8 +166,25 @@ All 23 tables are covered by committed migrations `000_init` →
 `DeviceToken`/`FareSchedule`), so `migrate deploy` creates everything. Keep
 that rule: any new model ships with a committed migration in the same PR.
 
-Do **not** run `prisma:seed` / `prisma:seed-places` against prod — the seed
-guard refuses non-local URLs, and sample accounts must never exist in prod.
+### 6a. Seeding a staging environment (explicit opt-in)
+
+The seed refuses any non-local database unless you set `ALLOW_SEED=true`.
+For a cloud staging instance, redeploy the api, then in its web terminal:
+
+```bash
+cd /app/apps/api
+ALLOW_SEED=true npx tsx prisma/seed.ts         # 45 users, 130 rides, wallets, pilot fare schedule
+npx tsx prisma/seed-places.ts                  # bundled POI cache (idempotent, no guard needed)
+```
+
+The seed is deterministic and wipes before writing, so it is safe to re-run.
+Never put `ALLOW_SEED=true` in a resource's persistent env — run it inline in
+the terminal only, so prod can never be seeded by accident. Seeded logins:
+admin `0917100000`, rider `0917100031`, driver `0917100011` (+ dev OTP code
+while `NODE_ENV` is not `production`).
+
+Do **not** run the seed against the production instance — sample accounts
+must never exist in prod (spec rule).
 
 ---
 

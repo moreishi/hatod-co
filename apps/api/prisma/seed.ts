@@ -17,6 +17,7 @@ import {
   WalletOwnerType,
 } from "@hailing/constants";
 import { cebu, pricing } from "@hailing/data";
+import { seedAllowed } from "./seed-guard.js";
 
 const SEED = 20260929;
 const PLATFORM_WALLET_ID = "platform";
@@ -61,9 +62,12 @@ const LAST = [
 ];
 
 const dbUrl = process.env.DATABASE_URL ?? "";
-if (!dbUrl.startsWith("file:") && !dbUrl.includes("@localhost")) {
+if (
+  !seedAllowed(dbUrl, { allowSeed: process.env.ALLOW_SEED === "true" })
+) {
   throw new Error(
-    `seed refused: DATABASE_URL is not local (${dbUrl || "unset"})`,
+    `seed refused: DATABASE_URL is not local (${dbUrl || "unset"}). ` +
+      `For a staging database, run with ALLOW_SEED=true explicitly.`,
   );
 }
 
