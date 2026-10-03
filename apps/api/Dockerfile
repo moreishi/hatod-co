@@ -37,6 +37,9 @@ COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/apps/api/node_modules /app/apps/api/node_modules
 COPY --from=build /app/packages /app/packages
 COPY --from=build /app/apps/api/dist /app/apps/api/dist
+# Schema + migrations ship with the image so `prisma migrate deploy`
+# works from the Coolify web terminal (§6) — migrations are never automatic.
+COPY --from=build /app/apps/api/prisma /app/apps/api/prisma
 COPY --from=build /app/apps/api/package.json /app/apps/api/
 WORKDIR /app/apps/api
 EXPOSE 3001
